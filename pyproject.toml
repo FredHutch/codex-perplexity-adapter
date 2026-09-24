@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codex-perplexity-adapter"
-version = "0.1.4"
+version = "0.1.5"
 description = "Standalone Responses API adapter for running Codex through Perplexity"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,10 +17,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/aportugu/codex-perplexity-adapter"
-Repository = "https://github.com/aportugu/codex-perplexity-adapter"
-Issues = "https://github.com/aportugu/codex-perplexity-adapter/issues"
-Releases = "https://github.com/aportugu/codex-perplexity-adapter/releases"
+Homepage = "https://github.com/FredHutch/codex-perplexity-adapter"
+Repository = "https://github.com/FredHutch/codex-perplexity-adapter"
+Issues = "https://github.com/FredHutch/codex-perplexity-adapter/issues"
+Releases = "https://github.com/FredHutch/codex-perplexity-adapter/releases"
 
 [project.scripts]
 codex-perplexity-adapter = "codex_perplexity_adapter.cli:main"

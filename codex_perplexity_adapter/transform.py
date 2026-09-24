@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from typing import Any
 
 
-SUPPORTED_REQUEST_FIELDS = {
-    "input",
-    "instructions",
-    "max_output_tokens",
-    "models",
-    "reasoning",
-    "stream",
-    "temperature",
-    "tools",
-    "top_p",
-}
+@dataclass
+class ToolContext:
+    custom_names: set[str] = field(default_factory=set)
+    namespace_tools: dict[str, tuple[str, str]] = field(default_factory=dict)
+
+    def upstream_name(self, namespace: str, name: str) -> str:
+        for upstream, original in self.namespace_tools.items():
+            if original == (namespace, name):
+                return upstream
+        return f"{namespace}__{name}"
 
 
 def stringify_tool_output(output: Any) -> str:
@@ -78,27 +78,36 @@ def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
     return normalized, additional_tools
 
 
-def _normalize_tools(tools: Any) -> tuple[list[Any], set[str]]:
+def _normalize_tools(tools: Any) -> tuple[list[Any], ToolContext]:
     normalized: list[Any] = []
-    custom_names: set[str] = set()
+    context = ToolContext()
 
-    def add_tool(tool: Any) -> None:
+    def add_tool(tool: Any, namespace: str | None = None) -> None:
         if not isinstance(tool, dict):
             normalized.append(tool)
             return
         tool_type = tool.get("type")
         if tool_type == "namespace":
+            namespace_name = tool.get("name")
+            if not isinstance(namespace_name, str) or not namespace_name:
+                namespace_name = namespace
             for nested in tool.get("tools") or []:
-                add_tool(nested)
+                add_tool(nested, namespace_name)
             return
+        original_name = tool.get("name")
+        upstream_name = original_name
+        if namespace and isinstance(original_name, str) and original_name:
+            upstream_name = f"{namespace}__{original_name}"
+            context.namespace_tools[upstream_name] = (namespace, original_name)
         if tool_type != "custom":
-            normalized.append(tool)
+            normalized.append({**tool, "name": upstream_name} if upstream_name != original_name else tool)
             return
 
-        name = tool.get("name") if isinstance(tool.get("name"), str) else ""
+        name = upstream_name if isinstance(upstream_name, str) else ""
         if not name:
+            normalized.append(tool)
             return
-        custom_names.add(name)
+        context.custom_names.add(name)
         description = tool.get("description") if isinstance(tool.get("description"), str) else ""
         fmt = tool.get("format")
         if isinstance(fmt, dict) and isinstance(fmt.get("definition"), str) and fmt["definition"]:
@@ -125,28 +134,55 @@ def _normalize_tools(tools: Any) -> tuple[list[Any], set[str]]:
     if isinstance(tools, list):
         for tool in tools:
             add_tool(tool)
-    return normalized, custom_names
+    return normalized, context
 
 
-def transform_request(payload: dict[str, Any], upstream_model: str) -> tuple[dict[str, Any], set[str]]:
+def transform_request(payload: dict[str, Any], upstream_model: str) -> tuple[dict[str, Any], ToolContext]:
     """Translate a Codex Responses request into a Perplexity request."""
-    transformed = {key: value for key, value in payload.items() if key in SUPPORTED_REQUEST_FIELDS}
-    transformed_input, additional_tools = _normalize_history(transformed.get("input"))
-    transformed["input"] = transformed_input
+    transformed = dict(payload)
+    # Codex client context is not part of Perplexity's Responses request schema.
+    transformed.pop("client_metadata", None)
+    additional_tools: list[dict[str, Any]] = []
+    if "input" in transformed:
+        transformed["input"], additional_tools = _normalize_history(transformed["input"])
 
-    tools = list(transformed.get("tools") or []) + additional_tools
-    normalized_tools, custom_names = _normalize_tools(tools)
-    if normalized_tools:
-        transformed["tools"] = normalized_tools
-    else:
-        transformed.pop("tools", None)
+    context = ToolContext()
+    tools = transformed.get("tools")
+    if isinstance(tools, list) or additional_tools:
+        normalized_tools, context = _normalize_tools((tools if isinstance(tools, list) else []) + additional_tools)
+        if normalized_tools:
+            transformed["tools"] = normalized_tools
+        else:
+            transformed.pop("tools", None)
+
+    if isinstance(transformed.get("input"), list):
+        remapped = []
+        for item in transformed["input"]:
+            if isinstance(item, dict) and item.get("type") == "function_call":
+                namespace, name = item.get("namespace"), item.get("name")
+                if isinstance(namespace, str) and isinstance(name, str):
+                    converted = dict(item)
+                    converted["name"] = context.upstream_name(namespace, name)
+                    converted.pop("namespace", None)
+                    item = converted
+            remapped.append(item)
+        transformed["input"] = remapped
+
+    tool_choice = transformed.get("tool_choice")
+    if isinstance(tool_choice, dict):
+        namespace, name = tool_choice.get("namespace"), tool_choice.get("name")
+        if isinstance(namespace, str) and isinstance(name, str):
+            transformed["tool_choice"] = {
+                **{key: value for key, value in tool_choice.items() if key != "namespace"},
+                "name": context.upstream_name(namespace, name),
+            }
 
     if upstream_model.startswith("preset/"):
         transformed["preset"] = upstream_model.removeprefix("preset/")
         transformed.pop("model", None)
     else:
         transformed["model"] = upstream_model
-    return transformed, custom_names
+    return transformed, context
 
 
 def _unwrap_custom_arguments(arguments: Any) -> str:
@@ -161,27 +197,32 @@ def _unwrap_custom_arguments(arguments: Any) -> str:
     return arguments
 
 
-def _restore_item(item: Any, custom_names: set[str]) -> Any:
+def _restore_item(item: Any, context: ToolContext) -> Any:
     if not isinstance(item, dict):
         return item
-    if item.get("type") == "function_call" and item.get("name") in custom_names:
+    if item.get("type") == "function_call" and item.get("name") in context.custom_names:
         restored = dict(item)
         restored["type"] = "custom_tool_call"
         restored["input"] = _unwrap_custom_arguments(restored.pop("arguments", ""))
-        return restored
-    return item
+    else:
+        restored = item
+    original = context.namespace_tools.get(restored.get("name"))
+    if original:
+        restored = dict(restored)
+        restored["namespace"], restored["name"] = original
+    return restored
 
 
-def transform_response(payload: dict[str, Any], custom_names: set[str]) -> dict[str, Any]:
+def transform_response(payload: dict[str, Any], context: ToolContext) -> dict[str, Any]:
     """Translate Perplexity response objects and stream events back to Codex."""
     restored = dict(payload)
     if isinstance(restored.get("item"), dict):
-        restored["item"] = _restore_item(restored["item"], custom_names)
+        restored["item"] = _restore_item(restored["item"], context)
     if isinstance(restored.get("output"), list):
-        restored["output"] = [_restore_item(item, custom_names) for item in restored["output"]]
+        restored["output"] = [_restore_item(item, context) for item in restored["output"]]
     response = restored.get("response")
     if isinstance(response, dict):
-        response = transform_response(response, custom_names)
+        response = transform_response(response, context)
         restored["response"] = response
 
     usage = restored.get("usage")

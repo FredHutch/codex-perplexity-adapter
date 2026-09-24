@@ -50,6 +50,8 @@
     NSMenuItem *appMenuItem = [[NSMenuItem alloc] init];
     [mainMenu addItem:appMenuItem];
     NSMenu *appMenu = [[NSMenu alloc] initWithTitle:@"Codex–Perplexity Adapter"];
+    [appMenu addItemWithTitle:@"About Codex–Perplexity Adapter" action:@selector(showAbout:) keyEquivalent:@""];
+    [appMenu addItem:[NSMenuItem separatorItem]];
     [appMenu addItemWithTitle:@"Quit Codex–Perplexity Adapter" action:@selector(terminate:) keyEquivalent:@"q"];
     appMenuItem.submenu = appMenu;
 
@@ -65,6 +67,20 @@
     editMenuItem.submenu = editMenu;
 
     NSApp.mainMenu = mainMenu;
+}
+
+- (void)showAbout:(id)sender {
+    NSDictionary *info = NSBundle.mainBundle.infoDictionary;
+    NSString *version = info[@"CFBundleShortVersionString"] ?: @"Unknown";
+    NSArray<NSString *> *models = info[@"SupportedModelAliases"];
+
+    NSAlert *alert = [[NSAlert alloc] init];
+    alert.messageText = @"Codex–Perplexity Adapter";
+    alert.informativeText = [NSString stringWithFormat:@"Version %@\n\nSupported models:\n%@",
+                             version, [models componentsJoinedByString:@"\n"]];
+    alert.alertStyle = NSAlertStyleInformational;
+    [alert addButtonWithTitle:@"OK"];
+    [alert runModal];
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
