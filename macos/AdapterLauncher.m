@@ -76,7 +76,7 @@
 
     NSAlert *alert = [[NSAlert alloc] init];
     alert.messageText = @"Codex–Perplexity Adapter";
-    alert.informativeText = [NSString stringWithFormat:@"Version %@\n\nSupported models:\n%@",
+    alert.informativeText = [NSString stringWithFormat:@"Version %@\n\nAvailable model names:\n%@\n\ngpt-5.6 is an alias for gpt-5.6-sol.",
                              version, [models componentsJoinedByString:@"\n"]];
     alert.alertStyle = NSAlertStyleInformational;
     [alert addButtonWithTitle:@"OK"];
