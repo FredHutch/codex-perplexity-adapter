@@ -51,7 +51,7 @@ stream_idle_timeout_ms = 300000
 
 Then start Codex using the CLI (`codex`), the Codex app, or a compatible IDE extension. The adapter must remain running while Codex is in use.
 
-The adapter advertises `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.6`. The last alias routes to `openai/gpt-5.6-sol`. Change the `model` setting above to select another model. Restricted `gpt-5.6-cyber` is never routed.
+The adapter works with `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.6`. Set the `model` value above to the model you want to use. `gpt-5.6` is an alias for `gpt-5.6-sol`.
 
 Requests and responses are forwarded by default. The adapter replaces the public model alias with its upstream route, removes Codex-only `client_metadata` that Perplexity rejects, and converts Codex custom tools when needed. Namespaced tools receive unique upstream names, and their namespace is restored on tool calls returned to Codex so it can dispatch them to the right plugin. Standard `metadata` is forwarded. For `openai/gpt-6-astra`, it changes `none` or `minimal` reasoning effort to `low` and removes `temperature` and `top_p`. Other routes receive no model-specific normalization. Perplexity validates forwarded fields and model capabilities; its errors are returned to the client.
 
