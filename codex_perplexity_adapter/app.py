@@ -14,6 +14,7 @@ import httpx
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
+from . import __version__
 from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
 
 
@@ -46,8 +47,18 @@ class ModelRoute:
     compatibility: str = "transparent"
 
 
+def _route(alias: str, upstream: str) -> ModelRoute:
+    compatibility = {
+        "openai/gpt-6-astra": "astra",
+        "openai/gpt-6.1-sol": "gpt-6.1",
+    }.get(upstream, "transparent")
+    return ModelRoute(alias, upstream, compatibility)
+
+
 BUILTIN_MODELS = (
     ModelRoute("gpt-6-astra", "openai/gpt-6-astra", "astra"),
+    _route("gpt-6.1-sol", "openai/gpt-6.1-sol"),
+    _route("gpt-6.1", "openai/gpt-6.1-sol"),
     ModelRoute("gpt-6-sol", "openai/gpt-6-sol"),
     ModelRoute("gpt-6-luna", "openai/gpt-6-luna"),
     ModelRoute("gpt-5.6-sol", "openai/gpt-5.6-sol"),
@@ -80,7 +91,7 @@ def _parse_route(value: str) -> ModelRoute:
         raise ValueError(f"Invalid model route {value!r}; expected ALIAS=UPSTREAM")
     if alias == RESTRICTED_MODEL or upstream == f"openai/{RESTRICTED_MODEL}":
         raise ValueError(f"Restricted model {RESTRICTED_MODEL} cannot be routed")
-    return ModelRoute(alias, upstream, "astra" if upstream == "openai/gpt-6-astra" else "transparent")
+    return _route(alias, upstream)
 
 
 def _model_routes(settings: Settings) -> dict[str, ModelRoute]:
@@ -100,7 +111,7 @@ def _model_routes(settings: Settings) -> dict[str, ModelRoute]:
 def _normalize_model_request(payload: dict[str, Any], route: ModelRoute) -> dict[str, Any]:
     """Apply model-specific compatibility rules before upstream translation."""
     normalized = dict(payload)
-    if route.compatibility != "astra":
+    if route.compatibility not in {"astra", "gpt-6.1"}:
         return normalized
 
     reasoning = normalized.get("reasoning")
@@ -438,7 +449,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
     model_routes = _model_routes(settings)
     app = FastAPI(
         title="Codex–Perplexity Adapter",
-        version="0.1.5",
+        version=__version__,
         docs_url=None,
         redoc_url=None,
         openapi_url=None,
@@ -489,7 +500,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             route = None
         if route is None and settings.allow_model_passthrough and isinstance(requested_model, str):
             if PASSTHROUGH_NAME.fullmatch(requested_model) and requested_model != RESTRICTED_MODEL:
-                route = ModelRoute(requested_model, f"openai/{requested_model}")
+                route = _route(requested_model, f"openai/{requested_model}")
         if route is None:
             supported = ", ".join(model_routes)
             return _error(

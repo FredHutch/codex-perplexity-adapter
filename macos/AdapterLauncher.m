@@ -52,6 +52,8 @@
     NSMenu *appMenu = [[NSMenu alloc] initWithTitle:@"Codex–Perplexity Adapter"];
     [appMenu addItemWithTitle:@"About Codex–Perplexity Adapter" action:@selector(showAbout:) keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
+    [appMenu addItemWithTitle:@"Hide Codex–Perplexity Adapter" action:@selector(hide:) keyEquivalent:@"h"];
+    [appMenu addItem:[NSMenuItem separatorItem]];
     [appMenu addItemWithTitle:@"Quit Codex–Perplexity Adapter" action:@selector(terminate:) keyEquivalent:@"q"];
     appMenuItem.submenu = appMenu;
 
@@ -65,6 +67,13 @@
     [editMenu addItemWithTitle:@"Paste" action:@selector(paste:) keyEquivalent:@"v"];
     [editMenu addItemWithTitle:@"Select All" action:@selector(selectAll:) keyEquivalent:@"a"];
     editMenuItem.submenu = editMenu;
+
+    NSMenuItem *windowMenuItem = [[NSMenuItem alloc] init];
+    [mainMenu addItem:windowMenuItem];
+    NSMenu *windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+    [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
+    windowMenuItem.submenu = windowMenu;
+    NSApp.windowsMenu = windowMenu;
 
     NSApp.mainMenu = mainMenu;
 }

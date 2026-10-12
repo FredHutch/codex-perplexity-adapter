@@ -27,6 +27,7 @@ class BundleMetadataTests(unittest.TestCase):
         with path.open("rb") as handle:
             info = plistlib.load(handle)
         self.assertEqual(info["CFBundleShortVersionString"], __version__)
+        self.assertEqual(info["CFBundleVersion"], __version__)
         self.assertEqual(info["SupportedModelAliases"], [route.alias for route in BUILTIN_MODELS])
 
 
@@ -155,6 +156,129 @@ class TransformationTests(unittest.TestCase):
 
 
 class AppTests(unittest.TestCase):
+    def test_gpt61_reasoning_for_all_route_sources(self):
+        configurations = [
+            (Settings(api_key="test"), "gpt-6.1"),
+            (Settings(api_key="test"), "gpt-6.1-sol"),
+            (Settings(api_key="test", model_routes=("team=openai/gpt-6.1-sol",)), "team"),
+            (Settings(api_key="test", model_alias="pinned", upstream_model="openai/gpt-6.1-sol"), "pinned"),
+            # A pinned registry excludes the built-ins, exercising passthrough.
+            (Settings(api_key="test", model_alias="other", allow_model_passthrough=True), "gpt-6.1-sol"),
+        ]
+        for settings, alias in configurations:
+            seen = []
+
+            async def handler(request):
+                seen.append(json.loads(request.content))
+                return httpx.Response(200, json={"status": "completed", "output": []})
+
+            with self.subTest(alias=alias, settings=settings):
+                with TestClient(create_app(settings, transport=httpx.MockTransport(handler))) as client:
+                    self.assertEqual(client.app.version, __version__)
+                    for effort in ("none", "minimal", "low", "medium", "high", "xhigh", "max", None):
+                        payload = {"model": alias, "input": "hello", "temperature": 0.4,
+                                   "top_p": 0.8, "future_field": {"enabled": True}}
+                        if effort is not None:
+                            payload["reasoning"] = {"effort": effort, "summary": "auto"}
+                        response = client.post("/v1/responses", json=payload,
+                                               headers={"Authorization": "Bearer local-adapter-token"})
+                        self.assertEqual(response.status_code, 200)
+                        sent = seen[-1]
+                        self.assertEqual(sent["model"], "openai/gpt-6.1-sol")
+                        if effort is None:
+                            self.assertNotIn("reasoning", sent)
+                        else:
+                            self.assertEqual(sent["reasoning"], {
+                                "effort": "low" if effort in {"none", "minimal"} else effort,
+                                "summary": "auto",
+                            })
+                        self.assertNotIn("temperature", sent)
+                        self.assertNotIn("top_p", sent)
+                        self.assertEqual(sent["future_field"], payload["future_field"])
+
+    def test_gpt61_override_to_other_upstream_stays_transparent(self):
+        async def handler(request):
+            sent = json.loads(request.content)
+            self.assertEqual(sent["model"], "openai/gpt-6-sol")
+            self.assertEqual(sent["reasoning"], {"effort": "minimal"})
+            self.assertEqual(sent["temperature"], 0.4)
+            self.assertEqual(sent["top_p"], 0.8)
+            return httpx.Response(200, json={"output": []})
+
+        settings = Settings(api_key="test", model_routes=("gpt-6.1=openai/gpt-6-sol",))
+        with TestClient(create_app(settings, transport=httpx.MockTransport(handler))) as client:
+            response = client.post("/v1/responses", headers={"Authorization": "Bearer local-adapter-token"},
+                                   json={"model": "gpt-6.1", "input": "hello",
+                                         "reasoning": {"effort": "minimal"}, "temperature": 0.4, "top_p": 0.8})
+        self.assertEqual(response.status_code, 200)
+
+    def test_gpt61_tools_and_followup_json_and_stream(self):
+        for alias in ("gpt-6.1", "gpt-6.1-sol"):
+            for stream in (False, True):
+                seen = []
+                items = [
+                    {"type": "function_call", "id": "fc_1", "call_id": "call_1",
+                     "name": "probe__echo", "arguments": '{"text":"ok"}'},
+                    {"type": "function_call", "id": "fc_2", "call_id": "call_2",
+                     "name": "exec", "arguments": '{"content":"text(1)"}'},
+                ]
+
+                async def handler(request):
+                    sent = json.loads(request.content)
+                    seen.append(sent)
+                    self.assertEqual(sent["model"], "openai/gpt-6.1-sol")
+                    self.assertEqual(sent["reasoning"]["effort"], "low")
+                    self.assertNotIn("client_metadata", sent)
+                    self.assertEqual([t["name"] for t in sent["tools"]], ["probe__echo", "exec"])
+                    data = {"id": "resp_1", "status": "completed", "output": items}
+                    if sent.get("stream"):
+                        events = [{"type": "response.output_item.done", "output_index": i, "item": item}
+                                  for i, item in enumerate(items)]
+                        events.append({"type": "response.completed", "response": data})
+                        return httpx.Response(200, text="".join(
+                            "data: " + json.dumps(event) + "\n\n" for event in events),
+                            headers={"content-type": "text/event-stream"})
+                    return httpx.Response(200, json=data)
+
+                with self.subTest(alias=alias, stream=stream):
+                    with TestClient(create_app(Settings(api_key="test"),
+                                               transport=httpx.MockTransport(handler))) as client:
+                        payload = {"model": alias, "input": "use both tools", "stream": stream,
+                                   "client_metadata": {"test": True}, "reasoning": {"effort": "none"},
+                                   "tools": [
+                                       {"type": "namespace", "name": "probe", "tools": [
+                                           {"type": "function", "name": "echo", "parameters": {"type": "object"}},
+                                       ]}, {"type": "custom", "name": "exec"},
+                                   ]}
+                        headers = {"Authorization": "Bearer local-adapter-token"}
+                        response = client.post("/v1/responses", headers=headers, json=payload)
+                        self.assertEqual(response.status_code, 200)
+                        if stream:
+                            events = [json.loads(line[6:]) for line in response.text.splitlines()
+                                      if line.startswith("data: ")]
+                            data = next(e["response"] for e in events if e["type"] == "response.completed")
+                            self.assertIn("response.custom_tool_call_input.done", [e["type"] for e in events])
+                        else:
+                            data = response.json()
+                        calls = data["output"]
+                        self.assertEqual((calls[0]["name"], calls[0]["namespace"]), ("echo", "probe"))
+                        self.assertEqual(calls[1]["type"], "custom_tool_call")
+                        self.assertEqual(calls[1]["input"], "text(1)")
+                        payload["input"] = [*calls,
+                            {"type": "function_call_output", "call_id": "call_1", "output": "ok"},
+                            {"type": "custom_tool_call_output", "call_id": "call_2",
+                             "output": [{"type": "input_text", "text": "1"}]},
+                        ]
+                        followup = client.post("/v1/responses", headers=headers, json=payload)
+                        self.assertEqual(followup.status_code, 200)
+                        history = seen[-1]["input"]
+                        self.assertEqual(history[0]["name"], "probe__echo")
+                        self.assertNotIn("namespace", history[0])
+                        self.assertEqual(history[1]["type"], "function_call")
+                        self.assertEqual(json.loads(history[1]["arguments"]), {"content": "text(1)"})
+                        self.assertEqual(history[3]["type"], "function_call_output")
+                        self.assertEqual(history[3]["output"], "1")
+
     def test_overlays_and_pinned_configuration(self):
         seen = []
 
@@ -326,6 +450,8 @@ class AppTests(unittest.TestCase):
     def test_supported_models_route_to_matching_upstream_models(self):
         expected_routes = {
             "gpt-6-astra": "openai/gpt-6-astra",
+            "gpt-6.1-sol": "openai/gpt-6.1-sol",
+            "gpt-6.1": "openai/gpt-6.1-sol",
             "gpt-6-sol": "openai/gpt-6-sol",
             "gpt-6-luna": "openai/gpt-6-luna",
             "gpt-5.6-sol": "openai/gpt-5.6-sol",
