@@ -202,6 +202,44 @@ class TransformationTests(unittest.TestCase):
 
 
 class AppTests(unittest.TestCase):
+    def test_long_mode_replay_reaches_upstream_without_stale_restrictions(self):
+        plan = '<collaboration_mode># Plan Mode (Conversational)\nDo not edit files.\n</collaboration_mode>'
+        default = '<collaboration_mode># Collaboration Mode: Default\nExecute authorized work.\n</collaboration_mode>'
+        history = [{'role': 'developer', 'content': plan}]
+        for index in range(30):
+            history.extend([
+                {'role': 'user', 'content': f'Implement step {index}.'},
+                {'role': 'assistant', 'content': 'I am still in Plan mode.'},
+                {'type': 'function_call', 'name': 'inspect', 'call_id': f'call_{index}', 'arguments': '{}'},
+                {'type': 'function_call_output', 'call_id': f'call_{index}', 'output': f'Inspected step {index}.'},
+            ])
+        history.extend([
+            {'role': 'developer', 'content': default},
+            {'role': 'user', 'content': 'Implement the approved plan now.'},
+        ])
+        original = json.loads(json.dumps(history))
+        seen = []
+
+        async def handler(request):
+            seen.append(json.loads(request.content))
+            if seen[-1].get('stream'):
+                event = {'type': 'response.completed', 'response': {'status': 'completed', 'output': []}}
+                return httpx.Response(200, headers={'Content-Type': 'text/event-stream'},
+                                      text='data: ' + json.dumps(event) + '\n\n')
+            return httpx.Response(200, json={'status': 'completed', 'output': []})
+
+        with TestClient(create_app(Settings(api_key='test'), transport=httpx.MockTransport(handler))) as client:
+            for stream in (False, True):
+                response = client.post('/v1/responses', headers={'Authorization': 'Bearer local-adapter-token'},
+                                       json={'model': 'gpt-6.1-sol', 'input': history, 'stream': stream})
+                self.assertEqual(response.status_code, 200)
+                # Only the obsolete mode message is removed: all replies and
+                # call/result pairs retain their order and identity.
+                expected = [{**item, 'type': item.get('type', 'message')} for item in history[1:]]
+                self.assertEqual(seen[-1]['input'], expected)
+                self.assertNotIn('Do not edit files.', json.dumps(seen[-1]))
+        self.assertEqual(history, original)
+
     def test_gpt61_reasoning_for_all_route_sources(self):
         configurations = [
             (Settings(api_key="test"), "gpt-6.1"),
@@ -798,6 +836,21 @@ class IncrementalStreamingTests(unittest.IsolatedAsyncioTestCase):
 
 
 class StreamSchemaTests(unittest.TestCase):
+    def test_message_phases_and_streamed_text_survive_completion(self):
+        normalizer = ResponsesStreamNormalizer(ToolContext())
+        for index, phase in enumerate(('commentary', 'final_answer')):
+            item = {'id': f'msg_{index}', 'type': 'message', 'role': 'assistant',
+                    'phase': phase, 'content': []}
+            added = normalizer.normalize({'type': 'response.output_item.added', 'output_index': index, 'item': item})
+            self.assertEqual(added[0]['item']['phase'], phase)
+            events = normalizer.normalize({'type': 'response.output_text.delta', 'output_index': index,
+                                           'item_id': item['id'], 'delta': phase})
+            done = normalizer.normalize({'type': 'response.output_item.done', 'output_index': index, 'item': item})
+            self.assertEqual(done[-1]['item']['phase'], phase)
+            self.assertEqual(done[-1]['item']['content'][0]['text'], phase)
+            self.assertEqual([event['delta'] for event in events + done
+                              if event['type'] == 'response.output_text.delta'], [phase])
+
     def _add_custom_call(
         self,
         normalizer: ResponsesStreamNormalizer,
