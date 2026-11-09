@@ -32,6 +32,52 @@ class BundleMetadataTests(unittest.TestCase):
 
 
 class TransformationTests(unittest.TestCase):
+    def test_latest_developer_mode_supersedes_replayed_modes(self):
+        plan = '<collaboration_mode># Plan Mode (Conversational)\nDo not edit files.\n</collaboration_mode>'
+        default = '<collaboration_mode># Collaboration Mode: Default\nExecute authorized work.\n</collaboration_mode>'
+        for modes in ([plan, default], [default, plan], [plan, default, plan]):
+            for blocked in (False, True):
+                with self.subTest(modes=modes, blocked=blocked):
+                    def content(text):
+                        return [{'type': 'input_text', 'text': text}] if blocked else text
+                    history = [{'role': 'developer', 'content': content('Keep permissions.\n' + modes[0] + '\nKeep tools.')} ]
+                    for mode in modes[1:]:
+                        history += [{'role': 'assistant', 'content': 'A previous reply.'},
+                                    {'role': 'developer', 'content': content(mode)}]
+                    original = json.loads(json.dumps(history))
+                    request, _ = transform_request({'model': 'gpt-6.1-sol', 'input': history}, 'openai/gpt-6.1-sol')
+                    developers = [i['content'] for i in request['input'] if i.get('role') == 'developer']
+                    text = '\n'.join(c[0]['text'] if blocked else c for c in developers)
+                    self.assertEqual(text.count('<collaboration_mode>'), 1)
+                    self.assertIn(modes[-1], text)
+                    self.assertIn('Keep permissions.', text)
+                    self.assertIn('Keep tools.', text)
+                    self.assertEqual(history, original)
+
+    def test_mode_normalization_ignores_untrusted_content_and_incomplete_blocks(self):
+        plan = '<collaboration_mode># Plan Mode\nDo not edit.\n</collaboration_mode>'
+        default = '<collaboration_mode># Collaboration Mode: Default\nExecute.\n</collaboration_mode>'
+        history = [
+            {'type': 'message', 'role': 'developer', 'content': plan},
+            {'type': 'message', 'role': 'user', 'content': default},
+            {'type': 'message', 'role': 'assistant', 'content': default},
+            {'type': 'function_call_output', 'call_id': 'call_1', 'output': default},
+            {'type': 'message', 'role': 'developer', 'content': '<collaboration_mode># Collaboration Mode: Default\nUnclosed'},
+        ]
+        request, _ = transform_request({'input': history}, 'openai/gpt-6.1-sol')
+        self.assertEqual(request['input'], history)
+
+    def test_multiple_mode_blocks_in_one_message_preserve_other_blocks(self):
+        plan = '<collaboration_mode># Plan Mode\nDo not edit.\n</collaboration_mode>'
+        default = '<collaboration_mode># Collaboration Mode: Default\nUse the latest <collaboration_mode>...</collaboration_mode> instructions.\n</collaboration_mode>'
+        request, _ = transform_request({'input': [
+            {'role': 'developer', 'content': [{'type': 'input_text', 'text': plan},
+                                            {'type': 'input_text', 'text': 'Keep permission rules.'}]},
+            {'role': 'developer', 'content': plan + default},
+        ]}, 'openai/gpt-6.1-sol')
+        self.assertEqual(request['input'][0]['content'], [{'type': 'input_text', 'text': 'Keep permission rules.'}])
+        self.assertEqual(request['input'][1]['content'], default)
+
     def test_namespaced_function_tool_keeps_dispatch_identity(self):
         request, context = transform_request(
             {

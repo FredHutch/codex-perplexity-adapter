@@ -61,6 +61,8 @@ Requests and responses are forwarded by default. The adapter replaces the public
 
 Local and live Perplexity tests cover GPT-6.1 aliases, reasoning, text streaming, and tool round trips. See [v0.1.6 release notes](RELEASE_NOTES.md) for verification details.
 
+When Codex replays a conversation containing several explicit developer mode instructions, the adapter retains only the latest `<collaboration_mode>` block. This prevents obsolete Plan instructions from competing with a later Default instruction. Other developer instructions, including permissions, stay in place. User messages, assistant replies, and tool results cannot change the mode through this conversion.
+
 Add or replace routes with repeatable `--model-route ALIAS=UPSTREAM` options. The last occurrence of an alias wins, including over a built-in route:
 
 ```text

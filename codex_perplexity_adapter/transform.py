@@ -3,8 +3,79 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
+
+
+COLLABORATION_MODE_BLOCK = re.compile(
+    r"<collaboration_mode>\s*# (?:Plan Mode(?: \(Conversational\))?|"
+    r"Collaboration Mode: (?:Default|Plan))[^\n]*\n.*?\n</collaboration_mode>",
+    re.DOTALL,
+)
+
+
+def _normalize_collaboration_modes(items: list[Any]) -> list[Any]:
+    """Keep only the latest explicit developer mode in a replayed history.
+
+    Codex appends mode changes rather than replacing the initial instructions.
+    Leaving the long, obsolete Plan block in place can keep an upstream model
+    planning after the client has switched to Default. Never infer a mode from
+    user text, tool output, or assistant replies.
+    """
+    locations: list[tuple[int, int | None, str]] = []
+    for index, item in enumerate(items):
+        if not isinstance(item, dict) or item.get("role") != "developer":
+            continue
+        if item.get("type", "message") != "message":
+            continue
+        content = item.get("content")
+        if isinstance(content, str):
+            locations.append((index, None, content))
+        elif isinstance(content, list):
+            for block_index, block in enumerate(content):
+                if (isinstance(block, dict) and block.get("type") in {"input_text", "text"}
+                        and isinstance(block.get("text"), str)):
+                    locations.append((index, block_index, block["text"]))
+
+    matches = [
+        (index, block_index, match.start(), match.end())
+        for index, block_index, text in locations
+        for match in COLLABORATION_MODE_BLOCK.finditer(text)
+    ]
+    if len(matches) < 2:
+        return items
+    obsolete = set(matches[:-1])
+    changed_indexes = {i for i, _, _, _ in obsolete}
+    result = list(items)
+    for index, block_index, text in locations:
+        spans = [(start, end) for i, b, start, end in obsolete if (i, b) == (index, block_index)]
+        if not spans:
+            continue
+        for start, end in sorted(spans, reverse=True):
+            text = text[:start] + text[end:]
+        item = dict(result[index])
+        if block_index is None:
+            item["content"] = text
+        else:
+            content = list(item["content"])
+            content[block_index] = {**content[block_index], "text": text}
+            item["content"] = content
+        result[index] = item
+
+    # Some gateways reject empty messages/content blocks after removing a mode.
+    for index in changed_indexes:
+        item = result[index]
+        if isinstance(item.get("content"), list):
+            result[index] = {**item, "content": [
+                block for block in item["content"]
+                if not (isinstance(block, dict) and block.get("type") in {"input_text", "text"}
+                        and not block.get("text", "").strip())
+            ]}
+    return [item for index, item in enumerate(result) if not (
+        index in changed_indexes
+        and (not item.get("content") or (isinstance(item["content"], str) and not item["content"].strip()))
+    )]
 
 
 @dataclass
@@ -75,7 +146,7 @@ def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
             normalized.append(converted)
             continue
         normalized.append(item)
-    return normalized, additional_tools
+    return _normalize_collaboration_modes(normalized), additional_tools
 
 
 def _normalize_tools(tools: Any) -> tuple[list[Any], ToolContext]:
