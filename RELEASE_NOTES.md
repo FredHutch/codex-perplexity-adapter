@@ -2,7 +2,7 @@
 
 Fix conversations that continue following obsolete Plan instructions after Codex switches to Default mode. The adapter now retains the latest explicit developer collaboration mode and removes superseded mode blocks from replayed history. Permissions and other instructions remain intact; user messages, assistant replies, and tool outputs do not select the mode.
 
-The macOS downloads are Developer ID signed. Apple notarization is pending for v0.1.7; v0.1.6 remains the most recent notarized release.
+Both macOS downloads are Developer ID signed, notarized by Apple, and include stapled notarization tickets. Gatekeeper accepts both as “Notarized Developer ID.”
 
 ## Verification
 
@@ -10,6 +10,7 @@ The macOS downloads are Developer ID signed. Apple notarization is pending for v
 - Final live Perplexity checks against `openai/gpt-6.1-sol` passed with a user-provided temporary key: Default returned a tool call after 30 prior Plan-mode refusals; switching back to Plan returned planning text without a write tool call; repeated mode switches followed the latest mode. A streamed namespaced tool call and its streamed result follow-up passed; the follow-up confirmed completion without another tool call or Plan-mode refusal. Tools were synthetic and did not execute file writes. The initial environment key returned HTTP 401.
 - All 41 tests also passed on Intel Python 3.12. Both macOS ZIPs passed architecture and code-signature checks, bundle metadata reported 0.1.7, and the frozen adapter modules matched the release source. Both bundled servers started and returned the expected model registry with dummy credentials. The Python wheel built successfully.
 - Short synthetic probes also passed before the fix; they did not independently reproduce the original long-conversation failure. The affected local developer history confirmed the obsolete Plan block remained alongside the later Default block.
+- Apple accepted both packages on November 9, 2026. Tickets were stapled and validated, and both apps passed Gatekeeper and strict code-signature checks. Submission IDs: `4bf1dd85-f88c-482a-a4cc-a34a69fb2b76` (Apple Silicon) and `b5a19c9f-d89e-4774-b7b0-aa511ffbdc15` (Intel).
 
 ---
 
