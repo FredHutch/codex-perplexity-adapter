@@ -32,6 +32,61 @@ class BundleMetadataTests(unittest.TestCase):
 
 
 class TransformationTests(unittest.TestCase):
+    def test_image_tool_results_preserve_content_and_replay(self):
+        for result_type in ('custom_tool_call_output', 'function_call_output'):
+            for detail in ('original', 'high', 'low', 'auto', None):
+                with self.subTest(result_type=result_type, detail=detail):
+                    image = {'type': 'input_image', 'image_url': 'data:image/png;base64,TEST',
+                             '_meta': {'codex/imageDetail': 'original'}}
+                    if detail is not None:
+                        image['detail'] = detail
+                    parts = [{'type': 'input_text', 'text': 'Before\n'}, image, 'Between',
+                             {'type': 'input_image', 'image_url': 'https://example.com/image.png'},
+                             {'future_part': 42}, {'type': 'text', 'text': 'After'}]
+                    payload = {'input': [
+                        {'type': result_type, 'call_id': 'call_image', 'output': parts},
+                        {'type': result_type, 'call_id': 'call_text', 'output': 'plain'},
+                    ]}
+                    original = json.loads(json.dumps(payload))
+                    request, _ = transform_request(payload, 'openai/gpt-6.1-sol')
+                    output = request['input'][0]['output']
+                    expected_image = {k: v for k, v in image.items() if k != '_meta'}
+                    if detail == 'original':
+                        expected_image['detail'] = 'high'
+                    self.assertEqual(output, [parts[0], expected_image,
+                        {'type': 'input_text', 'text': 'Between'}, parts[3],
+                        {'type': 'input_text', 'text': '{"future_part":42}'},
+                        {'type': 'input_text', 'text': 'After'}])
+                    self.assertEqual([item['call_id'] for item in request['input']],
+                                     ['call_image', 'call_text'])
+                    replay, _ = transform_request(request, 'openai/gpt-6.1-sol')
+                    self.assertEqual(replay, request)
+                    self.assertEqual(payload, original)
+
+    def test_image_only_and_text_only_tool_results(self):
+        image = {'type': 'input_image', 'image_url': 'data:image/png;base64,TEST'}
+        for result_type in ('custom_tool_call_output', 'function_call_output'):
+            for output in ([image], 'plain', None, [],
+                           [{'type': 'input_text', 'text': 'one'}, 'two'],
+                           '{"type":"input_image","image_url":"text only"}'):
+                with self.subTest(result_type=result_type, output=output):
+                    request, _ = transform_request({'input': [
+                        {'type': result_type, 'call_id': 'call_1', 'output': output}
+                    ]}, 'openai/gpt-6.1-sol')
+                    expected = output
+                    if result_type == 'custom_tool_call_output':
+                        if output is None or output == []:
+                            expected = ''
+                        elif isinstance(output, list) and output != [image]:
+                            expected = 'onetwo'
+                    self.assertEqual(request['input'][0]['output'], expected)
+
+    def test_user_images_remain_unchanged(self):
+        message = {'type': 'message', 'role': 'user', 'content': [
+            {'type': 'input_image', 'image_url': 'data:image/png;base64,TEST', 'detail': 'original'}]}
+        request, _ = transform_request({'input': [message]}, 'openai/gpt-6.1-sol')
+        self.assertEqual(request['input'], [message])
+
     def test_latest_developer_mode_supersedes_replayed_modes(self):
         plan = '<collaboration_mode># Plan Mode (Conversational)\nDo not edit files.\n</collaboration_mode>'
         default = '<collaboration_mode># Collaboration Mode: Default\nExecute authorized work.\n</collaboration_mode>'
@@ -202,6 +257,45 @@ class TransformationTests(unittest.TestCase):
 
 
 class AppTests(unittest.TestCase):
+    def test_images_reach_upstream_in_json_and_stream_requests(self):
+        for result_type in ('custom_tool_call_output', 'function_call_output'):
+            for stream in (False, True):
+                for status in (200, 400):
+                    with self.subTest(result_type=result_type, stream=stream, status=status):
+                        async def handler(request):
+                            sent = json.loads(request.content)
+                            result = sent['input'][1]
+                            self.assertEqual(result['call_id'], 'call_1')
+                            self.assertEqual(result['output'], [
+                                {'type': 'input_text', 'text': 'Image follows'},
+                                {'type': 'input_image', 'image_url': 'data:image/png;base64,TEST',
+                                 'detail': 'high'}])
+                            if status == 400:
+                                return httpx.Response(400, json={'error': {'message': 'image rejected'}})
+                            response = {'status': 'completed', 'output': []}
+                            if stream:
+                                return httpx.Response(200, text='data: ' + json.dumps(
+                                    {'type': 'response.completed', 'response': response}) + '\n\n',
+                                    headers={'content-type': 'text/event-stream'})
+                            return httpx.Response(200, json=response)
+                        call = {'type': 'function_call', 'name': 'inspect',
+                                'call_id': 'call_1', 'arguments': '{}'}
+                        if result_type == 'custom_tool_call_output':
+                            call = {'type': 'custom_tool_call', 'name': 'inspect',
+                                    'call_id': 'call_1', 'input': 'inspect()'}
+                        payload = {'model': 'gpt-6.1-sol', 'stream': stream, 'input': [call,
+                            {'type': result_type, 'call_id': 'call_1', 'output': [
+                                {'type': 'input_text', 'text': 'Image follows'},
+                                {'type': 'input_image', 'image_url': 'data:image/png;base64,TEST',
+                                 'detail': 'original'}]}]}
+                        with TestClient(create_app(Settings(api_key='test'),
+                                        transport=httpx.MockTransport(handler))) as client:
+                            response = client.post('/v1/responses', json=payload,
+                                headers={'Authorization': 'Bearer local-adapter-token'})
+                        self.assertEqual(response.status_code, status)
+                        if status == 400:
+                            self.assertEqual(response.json()['error']['message'], 'image rejected')
+
     def test_long_mode_replay_reaches_upstream_without_stale_restrictions(self):
         plan = '<collaboration_mode># Plan Mode (Conversational)\nDo not edit files.\n</collaboration_mode>'
         default = '<collaboration_mode># Collaboration Mode: Default\nExecute authorized work.\n</collaboration_mode>'

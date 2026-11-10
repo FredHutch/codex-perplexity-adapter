@@ -15,6 +15,7 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import __version__
+from .request_size import RequestTooLarge, normalize_transport_error, prepare_request_body
 from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
 
 
@@ -323,7 +324,7 @@ class ResponsesStreamNormalizer:
         return events
 
     def normalize(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
-        event = transform_response(payload, self.tool_context)
+        event = normalize_transport_error(transform_response(payload, self.tool_context))
         event_type = event.get("type")
         emitted: list[dict[str, Any]] = []
 
@@ -600,6 +601,12 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
 
         payload = _normalize_model_request(payload, route)
         upstream_payload, tool_context = transform_request(payload, route.upstream)
+        try:
+            upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload)
+        except RequestTooLarge as exc:
+            return JSONResponse(status_code=400, content={"error": {
+                "message": str(exc), "type": "invalid_request_error", "code": "context_length_exceeded",
+            }})
         client = httpx.AsyncClient(
             timeout=httpx.Timeout(settings.timeout_seconds),
             transport=transport,
@@ -612,7 +619,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 "Content-Type": "application/json",
                 "Accept": "text/event-stream" if upstream_payload.get("stream") else "application/json",
             },
-            json=upstream_payload,
+            content=upstream_body,
         )
         try:
             for attempt in range(RATE_LIMIT_RETRIES + 1):
@@ -637,6 +644,15 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             headers = {"content-type": content_type}
             if retry_after:
                 headers["retry-after"] = retry_after
+            if upstream.status_code in {400, 413}:
+                try:
+                    parsed_error = json.loads(body)
+                except (ValueError, UnicodeDecodeError):
+                    parsed_error = None
+                if isinstance(parsed_error, dict):
+                    normalized = normalize_transport_error(parsed_error)
+                    if normalized is not parsed_error:
+                        return JSONResponse(status_code=400, content=normalized)
             return Response(content=body, status_code=upstream.status_code, headers=headers)
 
         if upstream_payload.get("stream"):
