@@ -1,4 +1,4 @@
-# v0.1.8
+# v0.1.8 (unreleased)
 
 Fix streamed commentary disappearing from conversation history and being repeated on later turns. A live diagnostic reproduced the defect in v0.1.7: “Checking the fixture.” arrived as text deltas, but had no message completion event and was absent from the terminal response output. A controlled follow-up repeated the update with that history and stopped repeating it when the missing commentary was restored.
 
@@ -10,7 +10,7 @@ The adapter now completes unfinished commentary before tool calls and includes i
 - All 49 tests also pass on Python 3.10.20, 3.12.13, and 3.13.14. The Python wheel builds successfully and its adapter modules match the repaired source.
 - Live checks through the patched source adapter passed: commentary appears in both item-completion events and terminal output, sequence numbers increase consistently, and ordinary follow-up history returns “PASS” without repeating “Checking the fixture.”
 - An actual Codex CLI 0.152.0 run completed three separate shell tool-result turns. Persisted history contains each unique commentary marker exactly once with `phase: "commentary"`, followed by the expected final answer with `phase: "final_answer"`. The tools printed synthetic markers and did not modify files.
-- macOS packaging and notarization verification are pending; the release stays in draft until they pass.
+- macOS packaging and notarization verification are pending. No v0.1.8 release has been published; the latest downloads remain v0.1.7.
 
 ---
 
