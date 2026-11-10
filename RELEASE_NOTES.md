@@ -12,6 +12,9 @@ Use `/compact` and retry when a chat reaches the limit. This change does not rai
 - The running Apple Silicon packaged app passed live text, incremental streaming, namespaced and custom image tool calls in JSON and streaming mode, image-history replay, ordinary text-tool follow-up, commentary completion, and event-number checks. Synthetic images were recognized against expected answers withheld from prompts.
 - Actual Codex CLI 0.152.0 image viewing and follow-up replay passed against the image fix; the CLI used fallback metadata for the model.
 - Both JSON and streaming requests containing over 22 MB of text returned the recognized context-limit error from the packaged server. Recovery of the original oversized user conversation was not verified.
+- The Intel frozen server matches release source, starts under Rosetta, serves its model registry, and rejects oversized text requests correctly. All 60 tests also pass under Intel Python 3.12.
+- Both macOS builds are Developer ID signed and accepted by Apple. Stapled tickets, strict nested signatures, and Gatekeeper acceptance were verified, including fresh extraction of final ZIPs. Submission IDs: da8c09e6-503e-41bc-8429-9090e8e416f8 (Apple Silicon) and 23a8d002-266f-4eef-8dbf-29d7d55fbbe8 (Intel).
+- The Python wheel's adapter modules match the release source.
 
 ---
 
