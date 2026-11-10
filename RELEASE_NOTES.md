@@ -1,3 +1,21 @@
+# v0.1.12
+
+Add stateless request-byte notices and authenticated adapter-wide numeric status, shown in the macOS app. Exact UTF-8 measurement includes all forwarded fields and notice overhead. Warnings at 10, 12, and 15 decimal MB guide batch sizes and compaction; the 18 MB guard and 0.1.11 streaming compaction recovery remain authoritative. Disable notices with `--budget-notices disabled` without disabling recovery.
+
+No content store, archive, retained content cache, summaries, retrieval interface, image upload, or additional provider calls are introduced. Status retains only numerical operational counters in process memory. Notices never include client-derived text and do not alter client history. Request buffers are scoped to active requests, without a promise of secure erasure or protection from OS swap/crash capture.
+
+All 71 tests pass on Python 3.10.20, 3.12.13, 3.13.14, and local Python 3.14. Coverage includes exact notice overhead and thresholds, Unicode, original payload preservation, mixed tool images, authentication, status reset, failures, cancellation, secret markers, and absence of content file writes.
+
+Actual Codex CLI 0.152.0 `/compact` completed with notices enabled against a synthetic upstream and a 100,000-byte test budget. Retries shrank from 203,628 through 199,869 and 199,262 to 19,088 bytes. The signed arm64 packaged server passed health, status authentication, and oversized JSON/SSE checks. All six bundled adapter modules match source; metadata reports 0.1.12 and strict nested signature verification passes.
+
+The running local app passed live text, incremental streaming, ordinary text-tool follow-up, namespaced and custom image tools in JSON and streaming mode, commentary completion, and image replay. Actual Codex CLI image input and follow-up replay identified withheld synthetic colors correctly. The CLI reported fallback model metadata.
+
+Synthetic review requests at 10.1, 12.1, and 15.1 MB produced calls to save findings, reduced batches, and requested compaction pauses. At 15.1 MB the model selected 800,000 bytes of new output, below the notice's 1 MB recommendation. The verification client saved only synthetic findings in its designated test file; the adapter executed no tools. An unexpectedly oversized single result returned an actionable recognized failure. Large whitespace-only text padding produced a generic upstream HTTP 400; valid PNG ancillary padding allowed high-byte tests without excessive text-token input. Model behavior is observational and cannot guarantee compliance.
+
+All 71 tests also pass under Intel Python 3.12. Both macOS apps are Developer ID signed, notarized, and stapled. Fresh final ZIP extractions pass strict nested signature checks, ticket validation, and Gatekeeper acceptance. Intel packaged health, authenticated status, and JSON/SSE oversized-request recovery pass under Rosetta. The Intel frozen modules and Python wheel match source. Apple submission IDs: 339b138b-1df8-4464-8497-68e6521a04e7 (Apple Silicon) and b57a9327-0bca-4548-ae96-9bed872a0fa6 (Intel).
+
+---
+
 # v0.1.11
 
 Fix /compact failing repeatedly at the request-size limit. Streaming requests now receive a response.failed SSE event containing context_length_exceeded for local preflight failures and recognized upstream HTTP size errors. Nonstreaming requests keep HTTP 400 behavior. No history is trimmed by the adapter.

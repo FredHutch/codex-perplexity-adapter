@@ -15,6 +15,7 @@ from .app import Settings, _parse_route, create_app
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the Codex–Perplexity adapter")
     parser.add_argument("--port", type=int, default=4000)
+    parser.add_argument("--budget-notices", choices=("enabled", "disabled"), default="enabled")
     parser.add_argument(
         "--model-alias",
         help="expose only this model alias (defaults to gpt-5.6-sol when used alone)",
@@ -63,6 +64,7 @@ def main() -> None:
         model_routes=tuple(args.model_route),
         allow_model_passthrough=args.allow_model_passthrough,
         local_token=args.local_token,
+        budget_notices=args.budget_notices == "enabled",
     )
     pid_file = Path(args.pid_file).expanduser() if args.pid_file else None
     if pid_file:

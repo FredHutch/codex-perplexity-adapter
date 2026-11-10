@@ -16,7 +16,8 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import __version__
-from .request_size import RequestTooLarge, normalize_transport_error, prepare_request_body
+from .request_size import RequestTooLarge, normalize_transport_error, prepare_request_body, warning_level
+from .status import BudgetStatus, StatusMiddleware
 from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
 
 
@@ -85,6 +86,7 @@ class Settings:
     allow_model_passthrough: bool = False
     local_token: str = "local-adapter-token"
     timeout_seconds: float = 300.0
+    budget_notices: bool = True
 
 
 def _parse_route(value: str) -> ModelRoute:
@@ -509,10 +511,12 @@ async def _translate_sse(
     upstream: httpx.Response,
     tool_context: ToolContext,
     client: httpx.AsyncClient,
+    budget_status: BudgetStatus | None = None,
 ) -> AsyncIterator[bytes]:
     data_lines: list[str] = []
     raw_lines: list[str] = []
     normalizer = ResponsesStreamNormalizer(tool_context)
+    size_failure_counted = False
     normalized_types = {
         "response.output_item.added", "response.output_item.done",
         "response.output_text.delta", "response.output_text.done",
@@ -528,6 +532,10 @@ async def _translate_sse(
                     if data != "[DONE]":
                         try:
                             parsed = json.loads(data)
+                            if budget_status is not None and not size_failure_counted and isinstance(parsed, dict):
+                                if normalize_transport_error(parsed) is not parsed:
+                                    budget_status.failures += 1
+                                    size_failure_counted = True
                             if isinstance(parsed, dict) and parsed.get("type") in normalized_types:
                                 for event in normalizer.normalize(parsed):
                                     event_type = event.get("type", "message")
@@ -560,6 +568,14 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         redoc_url=None,
         openapi_url=None,
     )
+    budget_status = BudgetStatus()
+    app.add_middleware(StatusMiddleware, status=budget_status)
+
+    @app.get("/v1/adapter/status")
+    async def adapter_status(authorization: str | None = Header(default=None)) -> Response:
+        if not settings.local_token or not _authorized(authorization, settings.local_token):
+            return _error(401, "Invalid local adapter token", "authentication_error")
+        return JSONResponse(budget_status.snapshot(), headers={"Cache-Control": "no-store"})
 
     @app.get("/")
     async def root() -> dict[str, Any]:
@@ -618,11 +634,17 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         payload = _normalize_model_request(payload, route)
         upstream_payload, tool_context = transform_request(payload, route.upstream)
         try:
-            upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload)
+            upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload, notices=settings.budget_notices)
         except RequestTooLarge as exc:
+            budget_status.failures += 1
+            budget_status.active[request.state.budget_request_id] = exc.size
             return _context_limit_response({
                 "message": str(exc), "type": "invalid_request_error", "code": "context_length_exceeded",
             }, stream=bool(upstream_payload.get("stream")))
+        budget_status.active[request.state.budget_request_id] = len(upstream_body)
+        level = warning_level(len(upstream_body))
+        if level:
+            budget_status.warnings[level - 1] += 1
         client = httpx.AsyncClient(
             timeout=httpx.Timeout(settings.timeout_seconds),
             transport=transport,
@@ -647,16 +669,21 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                     break
                 await upstream.aclose()
                 await asyncio.sleep(delay)
-        except httpx.HTTPError as exc:
+        except httpx.HTTPError:
             await client.aclose()
-            return _error(502, f"Could not reach Perplexity: {exc}", "upstream_error")
+            return _error(502, "Could not reach Perplexity", "upstream_error")
+        except BaseException:
+            await client.aclose()
+            raise
 
         if upstream.status_code >= 400:
-            body = await upstream.aread()
+            try:
+                body = await upstream.aread()
+            finally:
+                await upstream.aclose()
+                await client.aclose()
             content_type = upstream.headers.get("content-type", "application/json")
             retry_after = upstream.headers.get("retry-after")
-            await upstream.aclose()
-            await client.aclose()
             headers = {"content-type": content_type}
             if retry_after:
                 headers["retry-after"] = retry_after
@@ -668,12 +695,13 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 if isinstance(parsed_error, dict):
                     normalized = normalize_transport_error(parsed_error)
                     if normalized is not parsed_error:
+                        budget_status.failures += 1
                         return _context_limit_response(normalized["error"], stream=bool(upstream_payload.get("stream")))
             return Response(content=body, status_code=upstream.status_code, headers=headers)
 
         if upstream_payload.get("stream"):
             return StreamingResponse(
-                _translate_sse(upstream, tool_context, client),
+                _translate_sse(upstream, tool_context, client, budget_status),
                 status_code=upstream.status_code,
                 media_type="text/event-stream",
                 headers={
@@ -684,10 +712,12 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 },
             )
 
-        body = await upstream.aread()
+        try:
+            body = await upstream.aread()
+        finally:
+            await upstream.aclose()
+            await client.aclose()
         content_type = upstream.headers.get("content-type", "application/json")
-        await upstream.aclose()
-        await client.aclose()
         try:
             parsed = json.loads(body)
         except json.JSONDecodeError:

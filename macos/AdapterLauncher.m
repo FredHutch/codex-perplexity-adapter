@@ -28,6 +28,8 @@
 @property(strong) NSButton *startButton;
 @property(strong) NSButton *stopButton;
 @property(strong) NSTextField *statusLabel;
+@property(strong) NSTextField *budgetLabel;
+@property(strong) NSTimer *budgetTimer;
 @property(strong) NSTask *serverTask;
 @property(strong) NSURL *pidURL;
 @end
@@ -108,7 +110,7 @@
 
 - (void)buildWindow {
     self.window = [[NSWindow alloc]
-        initWithContentRect:NSMakeRect(0, 0, 540, 310)
+        initWithContentRect:NSMakeRect(0, 0, 580, 365)
                   styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                     backing:NSBackingStoreBuffered
                       defer:NO];
@@ -158,7 +160,9 @@
     buttonRow.spacing = 10;
     buttonRow.alignment = NSLayoutAttributeCenterY;
 
-    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, buttonRow]];
+    self.budgetLabel = [NSTextField wrappingLabelWithString:@"Adapter-wide budget statistics appear while running. No request content is retained."];
+    self.budgetLabel.textColor = NSColor.secondaryLabelColor;
+    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, buttonRow, self.budgetLabel]];
     stack.orientation = NSUserInterfaceLayoutOrientationVertical;
     stack.alignment = NSLayoutAttributeLeading;
     stack.spacing = 12;
@@ -172,6 +176,7 @@
         [keyRow.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [self.keyField.heightAnchor constraintEqualToConstant:28],
         [description.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [self.budgetLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
     ]];
 }
 
@@ -298,11 +303,44 @@
 }
 
 - (void)setRunning:(BOOL)running {
+    [self.budgetTimer invalidate];
+    self.budgetTimer = nil;
+    if (running) {
+        __weak typeof(self) weakSelf = self;
+        self.budgetTimer = [NSTimer scheduledTimerWithTimeInterval:3 repeats:YES block:^(NSTimer *timer) {
+            [weakSelf refreshBudget];
+        }];
+    } else {
+        self.budgetLabel.stringValue = @"Adapter-wide budget statistics unavailable while stopped.";
+    }
     self.startButton.enabled = !running;
     self.stopButton.enabled = running;
     self.keyField.enabled = !running;
     self.statusLabel.stringValue = running ? @"● Starting…" : @"● Stopped";
     self.statusLabel.textColor = running ? NSColor.systemOrangeColor : NSColor.secondaryLabelColor;
+}
+
+- (void)refreshBudget {
+    if (!self.serverTask.running) return;
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://127.0.0.1:4000/v1/adapter/status"]];
+    request.timeoutInterval = 2;
+    request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    NSString *token = NSProcessInfo.processInfo.environment[@"ADAPTER_LOCAL_TOKEN"] ?: @"local-adapter-token";
+    [request setValue:[@"Bearer " stringByAppendingString:token] forHTTPHeaderField:@"Authorization"];
+    __weak typeof(self) weakSelf = self;
+    [[[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSDictionary *values = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            typeof(self) self = weakSelf;
+            if (!self || !self.serverTask.running) return;
+            if ([(NSHTTPURLResponse *)response statusCode] != 200 || ![values isKindOfClass:NSDictionary.class]) {
+                self.budgetLabel.stringValue = @"Adapter-wide budget statistics unavailable.";
+                return;
+            }
+            NSInteger warnings = [values[@"warnings_10mb"] integerValue] + [values[@"warnings_12mb"] integerValue] + [values[@"warnings_15mb"] integerValue];
+            self.budgetLabel.stringValue = [NSString stringWithFormat:@"Adapter-wide · Active: %@ · Last: %.2f MB · Largest active: %.2f MB\nWarnings: %ld · Size failures: %@ · Limit: 18 MB (decimal)", values[@"active_requests"], [values[@"latest_completed_request_bytes"] doubleValue] / 1000000, [values[@"largest_active_request_bytes"] doubleValue] / 1000000, (long)warnings, values[@"size_failures"]];
+        });
+    }] resume];
 }
 
 - (void)verifyHealth:(NSInteger)attempt {
