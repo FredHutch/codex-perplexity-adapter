@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -128,6 +129,21 @@ def _error(status_code: int, message: str, error_type: str = "adapter_error") ->
         status_code=status_code,
         content={"error": {"message": message, "type": error_type, "code": status_code}},
     )
+
+
+def _context_limit_response(error: dict[str, Any], *, stream: bool) -> Response:
+    # Older Codex clients recognize this code in failed SSE events but treat
+    # HTTP 400 bodies as generic errors, preventing compaction's trim/retry loop.
+    if not stream:
+        return JSONResponse(status_code=400, content={"error": error})
+    event = {
+        "type": "response.failed", "sequence_number": 0,
+        "response": {"id": "resp_" + uuid.uuid4().hex, "object": "response",
+                     "status": "failed", "output": [], "error": error},
+    }
+    async def failed_stream():
+        yield ("event: response.failed\ndata: " + json.dumps(event, separators=(",", ":")) + "\n\n").encode()
+    return StreamingResponse(failed_stream(), media_type="text/event-stream")
 
 
 def _authorized(authorization: str | None, local_token: str) -> bool:
@@ -604,9 +620,9 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         try:
             upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload)
         except RequestTooLarge as exc:
-            return JSONResponse(status_code=400, content={"error": {
+            return _context_limit_response({
                 "message": str(exc), "type": "invalid_request_error", "code": "context_length_exceeded",
-            }})
+            }, stream=bool(upstream_payload.get("stream")))
         client = httpx.AsyncClient(
             timeout=httpx.Timeout(settings.timeout_seconds),
             transport=transport,
@@ -652,7 +668,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 if isinstance(parsed_error, dict):
                     normalized = normalize_transport_error(parsed_error)
                     if normalized is not parsed_error:
-                        return JSONResponse(status_code=400, content=normalized)
+                        return _context_limit_response(normalized["error"], stream=bool(upstream_payload.get("stream")))
             return Response(content=body, status_code=upstream.status_code, headers=headers)
 
         if upstream_payload.get("stream"):

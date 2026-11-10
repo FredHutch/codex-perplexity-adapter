@@ -50,8 +50,16 @@ class RequestSizeTests(unittest.TestCase):
                 with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
                     r = client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'x'*2000,'stream':stream},
                         headers={'Authorization':'Bearer local-adapter-token'})
-            self.assertEqual(r.status_code,400)
-            self.assertEqual(r.json()['error']['code'],'context_length_exceeded')
+            self.assertEqual(r.status_code,200 if stream else 400)
+            if stream:
+                events = [json.loads(line[5:]) for line in r.text.splitlines() if line.startswith('data:')]
+                self.assertEqual(len(events), 1)
+                self.assertEqual(events[0]['type'], 'response.failed')
+                self.assertEqual(events[0]['response']['status'], 'failed')
+                error = events[0]['response']['error']
+            else:
+                error = r.json()['error']
+            self.assertEqual(error['code'],'context_length_exceeded')
 
     def test_downstream_limit_is_normalized_but_unrelated_errors_are_preserved(self):
         for status in (400, 413):
@@ -82,6 +90,19 @@ class RequestSizeTests(unittest.TestCase):
         self.assertEqual(event['type'],'response.failed')
         self.assertEqual(event['response']['status'],'failed')
         self.assertEqual(event['response']['error']['code'],'context_length_exceeded')
+
+    def test_downstream_http_limit_becomes_failed_event_for_streaming_client(self):
+        async def handler(request):
+            return httpx.Response(400,json={'error':{'message':LIMIT_MESSAGE,'code':400}})
+        with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
+            r=client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'small','stream':True},
+                headers={'Authorization':'Bearer local-adapter-token'})
+        self.assertEqual(r.status_code,200)
+        self.assertIn('text/event-stream',r.headers['content-type'])
+        events=[json.loads(line[5:]) for line in r.text.splitlines() if line.startswith('data:')]
+        self.assertEqual(len(events),1)
+        self.assertEqual(events[0]['type'],'response.failed')
+        self.assertEqual(events[0]['response']['error']['code'],'context_length_exceeded')
 
     def test_small_json_and_stream_requests_send_exact_measured_body(self):
         for stream in (False,True):
