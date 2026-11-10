@@ -27,7 +27,7 @@ Download the appropriate macOS app from the [latest release](https://github.com/
 
 The apps require macOS 13 or newer. After unzipping, move **Codex Perplexity Adapter.app** to Applications, open it, enter a Perplexity API key, and choose **Start Adapter**. Keep the app open while using Codex.
 
-The v0.1.11 apps are signed with an Apple Developer ID, notarized by Apple, and include stapled notarization tickets.
+The v0.1.12 apps are signed with an Apple Developer ID, notarized by Apple, and include stapled notarization tickets.
 Choose **About Codex–Perplexity Adapter** from the app menu to see the installed version and its supported model aliases.
 
 Press **⌘M** to minimize the window or **⌘H** to hide the app. The adapter continues running; restore it from the Dock.
@@ -53,7 +53,7 @@ stream_idle_timeout_ms = 300000
 
 Then start Codex using the CLI (`codex`), the Codex app, or a compatible IDE extension. The adapter must remain running while Codex is in use.
 
-## Current release ([v0.1.11](https://github.com/FredHutch/codex-perplexity-adapter/releases/tag/v0.1.11))
+## Current release ([v0.1.12](https://github.com/FredHutch/codex-perplexity-adapter/releases/tag/v0.1.12))
 
 The adapter supports `gpt-6.1-sol`, `gpt-6.1`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.6`. Set the `model` value above to the model you want to use. `gpt-6.1` is an alias for `gpt-6.1-sol`; `gpt-5.6` is an alias for `gpt-5.6-sol`.
 
@@ -89,9 +89,19 @@ Perplexity's downstream transport limit applies to the entire request, including
 
 In 0.1.11, streaming size failures are emitted as `response.failed` events so Codex recognizes them during compaction. Version 0.1.10 returned HTTP errors that some Codex clients treated as generic errors, preventing compaction retries. If a conversation reaches this limit, use `/compact` and retry. The adapter preserves all text and image data; it does not silently truncate tool results, remove messages, or reduce image quality. A single attachment, tool definition, or result that exceeds the budget must be reduced at its source.
 
+## Request budget awareness (0.1.12)
+
+Version 0.1.12 adds a fresh developer budget notice to each outgoing request, enabled by default. It measures the complete serialized UTF-8 body, including the notice, against the unchanged 18,000,000-byte guard. Decimal MB thresholds at 10, 12, and 15 MB advise smaller batches, saving progress in existing authorized project files, and pausing for compaction. These are byte limits, separate from model context tokens; model compliance is advisory. Use `--budget-notices disabled` to omit notices while preserving the hard guard and compaction recovery.
+
+The notice contains fixed guidance and numeric totals for inline-image values, tool-result text values, and other request bytes. It is never returned as conversation history. Client messages are preserved, including messages resembling notices. No content is summarized, truncated, recompressed, archived, or cached, and no additional provider calls or adapter-managed tools are introduced.
+
+`GET /v1/adapter/status` requires a configured bearer token even when ordinary API authentication is disabled. It exposes only active-request count, latest completed request bytes, largest active request bytes, warning counts by severity, and size failures. These aggregate numbers reset on restart and describe the entire adapter, not any chat's remaining budget. The macOS window displays them while running. No chat identifiers, content references, or history are retained. Active request buffers remain in memory until completion, cancellation, or failure; secure memory erasure and protection from OS swap or crash capture are not guaranteed.
+
+Both macOS packages include budget awareness and adapter-wide status. Notices reduce avoidable failures but cannot enlarge the provider limit or guarantee model compliance.
+
 ## Data handling and governance
 
-- **Data forwarded:** The adapter forwards Responses request fields by default. These can include prompts, conversation context, metadata or user identifiers, multimodal content or URLs, tool definitions, tool arguments, and tool results. It does not redact this data. Documented compatibility conversions and model routing are the only intended changes.
+- **Data forwarded:** The adapter forwards Responses request fields by default. These can include prompts, conversation context, metadata or user identifiers, multimodal content or URLs, tool definitions, tool arguments, and tool results. It does not redact this data. Documented compatibility conversions, model routing, and the request-local budget notice are the intended changes.
 - **External destination:** Requests go to the hard-coded Perplexity Agent API endpoint over HTTPS. Custom routes and model passthrough change the model requested from Perplexity, not the network destination. The adapter contains no analytics or telemetry integrations.
 - **Tool execution:** Codex executes client-side tools, including browser and computer tools. The adapter forwards their definitions, calls, and returned results as conversation data; it does not execute them. Provider-hosted tools, where supported, are handled by Perplexity.
 - **Credentials and local access:** The macOS app keeps the entered Perplexity API key in memory and passes it to its local server process through an environment variable. The server sends it to Perplexity in the authorization header; the app does not save it. The documented local bearer token is a fixed, public default, so other software on the same machine that knows it can call the adapter. CLI users can set a unique token with `ADAPTER_LOCAL_TOKEN` or `--local-token` and use the same value in Codex configuration.

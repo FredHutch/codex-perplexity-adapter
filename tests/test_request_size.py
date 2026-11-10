@@ -46,8 +46,8 @@ class RequestSizeTests(unittest.TestCase):
             async def handler(request):
                 self.fail('Oversized request reached upstream')
             with patch('codex_perplexity_adapter.app.prepare_request_body',
-                       side_effect=lambda payload: prepare_request_body(payload,budget=1000)):
-                with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
+                       side_effect=lambda payload, **kwargs: prepare_request_body(payload,budget=1000)):
+                with TestClient(create_app(Settings(budget_notices=False, api_key='test'),transport=httpx.MockTransport(handler))) as client:
                     r = client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'x'*2000,'stream':stream},
                         headers={'Authorization':'Bearer local-adapter-token'})
             self.assertEqual(r.status_code,200 if stream else 400)
@@ -66,7 +66,7 @@ class RequestSizeTests(unittest.TestCase):
             for message in (LIMIT_MESSAGE, 'validation failed: unrelated error'):
                 async def handler(request):
                     return httpx.Response(status,json={'error':{'message':message,'type':'invalid_request','code':status}})
-                with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
+                with TestClient(create_app(Settings(budget_notices=False, api_key='test'),transport=httpx.MockTransport(handler))) as client:
                     r=client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'small'},
                         headers={'Authorization':'Bearer local-adapter-token'})
                 if message == LIMIT_MESSAGE:
@@ -83,7 +83,7 @@ class RequestSizeTests(unittest.TestCase):
                 'message':LIMIT_MESSAGE,'code':400,'type':'invalid_request'}}}
             return httpx.Response(200,text='data: '+json.dumps(event)+'\n\n',
                 headers={'content-type':'text/event-stream'})
-        with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
+        with TestClient(create_app(Settings(budget_notices=False, api_key='test'),transport=httpx.MockTransport(handler))) as client:
             r=client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'small','stream':True},
                 headers={'Authorization':'Bearer local-adapter-token'})
         event=next(json.loads(line[5:]) for line in r.text.splitlines() if line.startswith('data:'))
@@ -94,7 +94,7 @@ class RequestSizeTests(unittest.TestCase):
     def test_downstream_http_limit_becomes_failed_event_for_streaming_client(self):
         async def handler(request):
             return httpx.Response(400,json={'error':{'message':LIMIT_MESSAGE,'code':400}})
-        with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
+        with TestClient(create_app(Settings(budget_notices=False, api_key='test'),transport=httpx.MockTransport(handler))) as client:
             r=client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'small','stream':True},
                 headers={'Authorization':'Bearer local-adapter-token'})
         self.assertEqual(r.status_code,200)
@@ -114,7 +114,7 @@ class RequestSizeTests(unittest.TestCase):
                 if stream:
                     return httpx.Response(200,text='data: '+json.dumps({'type':'response.completed','response':response})+'\n\n',headers={'content-type':'text/event-stream'})
                 return httpx.Response(200,json=response)
-            with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
+            with TestClient(create_app(Settings(budget_notices=False, api_key='test'),transport=httpx.MockTransport(handler))) as client:
                 r=client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'é☃','stream':stream},
                     headers={'Authorization':'Bearer local-adapter-token'})
             self.assertEqual(r.status_code,200)

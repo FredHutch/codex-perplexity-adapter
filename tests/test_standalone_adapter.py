@@ -288,7 +288,7 @@ class AppTests(unittest.TestCase):
                                 {'type': 'input_text', 'text': 'Image follows'},
                                 {'type': 'input_image', 'image_url': 'data:image/png;base64,TEST',
                                  'detail': 'original'}]}]}
-                        with TestClient(create_app(Settings(api_key='test'),
+                        with TestClient(create_app(Settings(budget_notices=False, api_key='test'),
                                         transport=httpx.MockTransport(handler))) as client:
                             response = client.post('/v1/responses', json=payload,
                                 headers={'Authorization': 'Bearer local-adapter-token'})
@@ -322,7 +322,7 @@ class AppTests(unittest.TestCase):
                                       text='data: ' + json.dumps(event) + '\n\n')
             return httpx.Response(200, json={'status': 'completed', 'output': []})
 
-        with TestClient(create_app(Settings(api_key='test'), transport=httpx.MockTransport(handler))) as client:
+        with TestClient(create_app(Settings(budget_notices=False, api_key='test'), transport=httpx.MockTransport(handler))) as client:
             for stream in (False, True):
                 response = client.post('/v1/responses', headers={'Authorization': 'Bearer local-adapter-token'},
                                        json={'model': 'gpt-6.1-sol', 'input': history, 'stream': stream})
@@ -336,12 +336,12 @@ class AppTests(unittest.TestCase):
 
     def test_gpt61_reasoning_for_all_route_sources(self):
         configurations = [
-            (Settings(api_key="test"), "gpt-6.1"),
-            (Settings(api_key="test"), "gpt-6.1-sol"),
-            (Settings(api_key="test", model_routes=("team=openai/gpt-6.1-sol",)), "team"),
-            (Settings(api_key="test", model_alias="pinned", upstream_model="openai/gpt-6.1-sol"), "pinned"),
+            (Settings(budget_notices=False, api_key="test"), "gpt-6.1"),
+            (Settings(budget_notices=False, api_key="test"), "gpt-6.1-sol"),
+            (Settings(budget_notices=False, api_key="test", model_routes=("team=openai/gpt-6.1-sol",)), "team"),
+            (Settings(budget_notices=False, api_key="test", model_alias="pinned", upstream_model="openai/gpt-6.1-sol"), "pinned"),
             # A pinned registry excludes the built-ins, exercising passthrough.
-            (Settings(api_key="test", model_alias="other", allow_model_passthrough=True), "gpt-6.1-sol"),
+            (Settings(budget_notices=False, api_key="test", model_alias="other", allow_model_passthrough=True), "gpt-6.1-sol"),
         ]
         for settings, alias in configurations:
             seen = []
@@ -383,7 +383,7 @@ class AppTests(unittest.TestCase):
             self.assertEqual(sent["top_p"], 0.8)
             return httpx.Response(200, json={"output": []})
 
-        settings = Settings(api_key="test", model_routes=("gpt-6.1=openai/gpt-6-sol",))
+        settings = Settings(budget_notices=False, api_key="test", model_routes=("gpt-6.1=openai/gpt-6-sol",))
         with TestClient(create_app(settings, transport=httpx.MockTransport(handler))) as client:
             response = client.post("/v1/responses", headers={"Authorization": "Bearer local-adapter-token"},
                                    json={"model": "gpt-6.1", "input": "hello",
@@ -419,7 +419,7 @@ class AppTests(unittest.TestCase):
                     return httpx.Response(200, json=data)
 
                 with self.subTest(alias=alias, stream=stream):
-                    with TestClient(create_app(Settings(api_key="test"),
+                    with TestClient(create_app(Settings(budget_notices=False, api_key="test"),
                                                transport=httpx.MockTransport(handler))) as client:
                         payload = {"model": alias, "input": "use both tools", "stream": stream,
                                    "client_metadata": {"test": True}, "reasoning": {"effort": "none"},
@@ -466,7 +466,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(200, json={"id": "resp_1", "output": []})
 
         app = create_app(
-            Settings(api_key="secret", model_routes=(
+            Settings(budget_notices=False, api_key="secret", model_routes=(
                 "team=preset/first", "team=preset/final", "gpt-6-sol=openai/gpt-5.6-terra",
             )), transport=httpx.MockTransport(handler),
         )
@@ -482,19 +482,19 @@ class AppTests(unittest.TestCase):
         self.assertEqual(seen[0]["preset"], "final")
         self.assertEqual(seen[1]["model"], "openai/gpt-5.6-terra")
 
-        pinned = create_app(Settings(api_key="secret", upstream_model="preset/team"))
+        pinned = create_app(Settings(budget_notices=False, api_key="secret", upstream_model="preset/team"))
         with TestClient(pinned) as client:
             aliases = [item["id"] for item in client.get("/v1/models", headers=headers).json()["data"]]
             self.assertEqual(aliases, ["gpt-5.6-sol"])
-        create_app(Settings(api_key="secret", model_alias="legacy", upstream_model="other/model"))
+        create_app(Settings(budget_notices=False, api_key="secret", model_alias="legacy", upstream_model="other/model"))
 
     def test_invalid_route_combinations_and_cyber(self):
         for routes in (("broken",), ("cyber=openai/gpt-5.6-cyber",),
                        ("gpt-5.6-cyber=openai/gpt-6-sol",)):
             with self.subTest(routes=routes), self.assertRaises(ValueError):
-                create_app(Settings(api_key="secret", model_routes=routes))
+                create_app(Settings(budget_notices=False, api_key="secret", model_routes=routes))
         with self.assertRaises(ValueError):
-            create_app(Settings(api_key="secret", model_alias="team",
+            create_app(Settings(budget_notices=False, api_key="secret", model_alias="team",
                                 model_routes=("team=openai/gpt-6-sol",)))
         args = build_parser().parse_args(["--model-route", "team=openai/gpt-6-sol",
                                           "--model-route", "team=preset/new",
@@ -509,7 +509,7 @@ class AppTests(unittest.TestCase):
             seen.append(json.loads(request.content)["model"])
             return httpx.Response(200, json={"id": "resp_1", "output": []})
 
-        app = create_app(Settings(api_key="secret", allow_model_passthrough=True),
+        app = create_app(Settings(budget_notices=False, api_key="secret", allow_model_passthrough=True),
                          transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
             headers = {"Authorization": "Bearer local-adapter-token"}
@@ -534,7 +534,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(200, content=b'{"status": "failed", "error": {"code": "no_access"}}',
                                   headers={"content-type": "application/json"})
 
-        app = create_app(Settings(api_key="secret"), transport=httpx.MockTransport(handler))
+        app = create_app(Settings(budget_notices=False, api_key="secret"), transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
             headers = {"Authorization": "Bearer local-adapter-token"}
             error = client.post("/v1/responses", headers=headers,
@@ -562,7 +562,7 @@ class AppTests(unittest.TestCase):
         async def record_delay(seconds: float) -> None:
             delays.append(seconds)
 
-        app = create_app(Settings(api_key="secret"), transport=httpx.MockTransport(handler))
+        app = create_app(Settings(budget_notices=False, api_key="secret"), transport=httpx.MockTransport(handler))
         with patch("codex_perplexity_adapter.app.asyncio.sleep", record_delay):
             with TestClient(app) as client:
                 response = client.post("/v1/responses",
@@ -582,7 +582,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(429, content=b'{"error":"limited"}',
                                   headers={"content-type": "application/json", "retry-after": "0"})
 
-        app = create_app(Settings(api_key="secret"), transport=httpx.MockTransport(handler))
+        app = create_app(Settings(budget_notices=False, api_key="secret"), transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
             response = client.post("/v1/responses",
                                    headers={"Authorization": "Bearer local-adapter-token"},
@@ -600,7 +600,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(429, json={"error": "quota"},
                                   headers={"retry-after": "120"})
 
-        app = create_app(Settings(api_key="secret"), transport=httpx.MockTransport(handler))
+        app = create_app(Settings(budget_notices=False, api_key="secret"), transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
             response = client.post("/v1/responses",
                                    headers={"Authorization": "Bearer local-adapter-token"},
@@ -616,7 +616,7 @@ class AppTests(unittest.TestCase):
             self.assertEqual(sent["future_field"], "preserved")
             return httpx.Response(200, json={"id": "resp_1", "status": "completed", "output": []})
 
-        app = create_app(Settings(api_key="secret"), transport=httpx.MockTransport(handler))
+        app = create_app(Settings(budget_notices=False, api_key="secret"), transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
             response = client.post("/v1/responses",
                 headers={"Authorization": "Bearer local-adapter-token"},
@@ -644,7 +644,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(200, json={"id": "resp_1", "status": "completed", "output": []})
 
         app = create_app(
-            Settings(api_key="perplexity-secret"),
+            Settings(budget_notices=False, api_key="perplexity-secret"),
             transport=httpx.MockTransport(handler),
         )
         with TestClient(app) as client:
@@ -671,7 +671,7 @@ class AppTests(unittest.TestCase):
             self.fail("unsupported models must not reach the upstream API")
 
         app = create_app(
-            Settings(api_key="perplexity-secret"),
+            Settings(budget_notices=False, api_key="perplexity-secret"),
             transport=httpx.MockTransport(handler),
         )
         with TestClient(app) as client:
@@ -696,7 +696,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(200, json={"id": "resp_1", "status": "completed", "output": []})
 
         app = create_app(
-            Settings(api_key="perplexity-secret"),
+            Settings(budget_notices=False, api_key="perplexity-secret"),
             transport=httpx.MockTransport(handler),
         )
         with TestClient(app) as client:
@@ -721,7 +721,7 @@ class AppTests(unittest.TestCase):
             seen.append(json.loads(request.content))
             return httpx.Response(200, json={"id": "resp_1", "output": []})
 
-        app = create_app(Settings(api_key="secret", model_routes=(
+        app = create_app(Settings(budget_notices=False, api_key="secret", model_routes=(
             "gpt-6-astra=openai/gpt-6-sol", "team-astra=openai/gpt-6-astra",
         )), transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
@@ -746,7 +746,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(200, json={"id": "resp_1", "status": "completed", "output": []})
 
         app = create_app(
-            Settings(
+            Settings(budget_notices=False,
                 api_key="perplexity-secret",
                 model_alias="team-model",
                 upstream_model="preset/team-coding",
@@ -779,7 +779,7 @@ class AppTests(unittest.TestCase):
             )
 
         app = create_app(
-            Settings(api_key="perplexity-secret"),
+            Settings(budget_notices=False, api_key="perplexity-secret"),
             transport=httpx.MockTransport(handler),
         )
         with TestClient(app) as client:
@@ -792,7 +792,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.json()["id"], "resp_1")
 
     def test_api_documentation_is_disabled(self):
-        app = create_app(Settings(api_key="perplexity-secret"))
+        app = create_app(Settings(budget_notices=False, api_key="perplexity-secret"))
         with TestClient(app) as client:
             self.assertEqual(client.get("/docs").status_code, 404)
             self.assertEqual(client.get("/openapi.json").status_code, 404)
@@ -819,7 +819,7 @@ class AppTests(unittest.TestCase):
             return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
 
         app = create_app(
-            Settings(api_key="perplexity-secret"),
+            Settings(budget_notices=False, api_key="perplexity-secret"),
             transport=httpx.MockTransport(handler),
         )
         with TestClient(app) as client:
@@ -855,7 +855,7 @@ class AppTests(unittest.TestCase):
             )
             return httpx.Response(200, text=body, headers={"content-type": "text/event-stream"})
 
-        app = create_app(Settings(api_key="perplexity-secret"), transport=httpx.MockTransport(handler))
+        app = create_app(Settings(budget_notices=False, api_key="perplexity-secret"), transport=httpx.MockTransport(handler))
         with TestClient(app) as client:
             response = client.post(
                 "/v1/responses",
