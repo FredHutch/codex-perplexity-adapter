@@ -1,3 +1,14 @@
+# v0.1.11
+
+Fix /compact failing repeatedly at the request-size limit. Streaming requests now receive a response.failed SSE event containing context_length_exceeded for local preflight failures and recognized upstream HTTP size errors. Nonstreaming requests keep HTTP 400 behavior. No history is trimmed by the adapter.
+
+An actual Codex CLI 0.152.0 /compact test against the patched adapter with a synthetic upstream and reduced budget retried progressively smaller history and completed successfully. Request sizes fell from 198,892 bytes to 18,377 bytes under a 100,000-byte test budget. The user subsequently confirmed that compaction of the original affected conversation succeeded with the local 0.1.11 app. All 61 tests pass on Python 3.10.20, 3.12.13, 3.13.14, and local Python 3.14.
+
+Both packaged servers pass streaming and nonstreaming oversized-text checks. All 61 tests also pass under Intel Python 3.12. Both apps are Developer ID signed, notarized, and stapled; strict signatures and Gatekeeper acceptance were verified after final ZIP extraction. Apple submission IDs: 219d03a0-1bab-4219-a41a-0c4a2ab5814f (Apple Silicon) and 1c0453ca-c405-45ca-846c-b69047bdd00c (Intel). The wheel and bundled adapter modules match source. GitHub Actions is disabled; validation used the local matrix.
+
+
+---
+
 # v0.1.10
 
 Fix image-bearing tool results being flattened into JSON text. Custom and ordinary tool results now preserve ordered native image and text parts, image data, and tool-call associations. Codex's `original` image detail hint maps to `high`; text-only behavior remains compatible.

@@ -27,7 +27,7 @@ Download the appropriate macOS app from the [latest release](https://github.com/
 
 The apps require macOS 13 or newer. After unzipping, move **Codex Perplexity Adapter.app** to Applications, open it, enter a Perplexity API key, and choose **Start Adapter**. Keep the app open while using Codex.
 
-The v0.1.10 apps are signed with an Apple Developer ID, notarized by Apple, and include stapled notarization tickets.
+The v0.1.11 apps are signed with an Apple Developer ID, notarized by Apple, and include stapled notarization tickets.
 Choose **About Codex–Perplexity Adapter** from the app menu to see the installed version and its supported model aliases.
 
 Press **⌘M** to minimize the window or **⌘H** to hide the app. The adapter continues running; restore it from the Dock.
@@ -53,13 +53,13 @@ stream_idle_timeout_ms = 300000
 
 Then start Codex using the CLI (`codex`), the Codex app, or a compatible IDE extension. The adapter must remain running while Codex is in use.
 
-## Current release ([v0.1.10](https://github.com/FredHutch/codex-perplexity-adapter/releases/tag/v0.1.10))
+## Current release ([v0.1.11](https://github.com/FredHutch/codex-perplexity-adapter/releases/tag/v0.1.11))
 
 The adapter supports `gpt-6.1-sol`, `gpt-6.1`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.6`. Set the `model` value above to the model you want to use. `gpt-6.1` is an alias for `gpt-6.1-sol`; `gpt-5.6` is an alias for `gpt-5.6-sol`.
 
 Requests and responses are forwarded by default. The adapter replaces the public model alias with its upstream route, removes Codex-only `client_metadata` that Perplexity rejects, and converts Codex custom tools when needed. Namespaced tools receive unique upstream names, and their namespace is restored on tool calls returned to Codex so it can dispatch them to the right plugin. Standard `metadata` is forwarded. For `openai/gpt-6-astra` and `openai/gpt-6.1-sol`, it changes `none` or `minimal` reasoning effort to `low` and removes `temperature` and `top_p`. Compatibility follows the resolved upstream route, including custom routes, pinned routes, and passthrough. Other routes receive no model-specific normalization. Perplexity validates forwarded fields and model capabilities; its errors are returned to the client.
 
-Version 0.1.10 preserves image content in tool results so Codex can inspect images and retain them in conversation history. Codex's image detail hint `original` is mapped to the supported `high` hint. Requests above the 18 MB adapter budget and Perplexity's downstream 20 MB transport failures return a context-limit error that Codex can recognize. Use `/compact` in affected chats and retry. Text and image content are preserved. See [v0.1.10 release notes](RELEASE_NOTES.md) for verification and limitations.
+Version 0.1.11 fixes compaction retries at the request-size limit by returning streaming context failures in the format Codex recognizes. Affected-conversation compaction was confirmed by the user. It also preserves image content in tool results so Codex can inspect images and retain them in conversation history. Codex's image detail hint `original` is mapped to the supported `high` hint. Requests above the 18 MB adapter budget and Perplexity's downstream 20 MB transport failures return a context-limit error that Codex can recognize. Use `/compact` in affected chats and retry. Text and image content are preserved. See [v0.1.11 release notes](RELEASE_NOTES.md) for verification and limitations.
 
 When Codex replays a conversation containing several explicit developer mode instructions, the adapter retains only the latest `<collaboration_mode>` block. This prevents obsolete Plan instructions from competing with a later Default instruction. Other developer instructions, including permissions, stay in place. User messages, assistant replies, and tool results cannot change the mode through this conversion.
 
@@ -87,7 +87,7 @@ On an upstream HTTP 429, the adapter makes up to two additional attempts before 
 
 Perplexity's downstream transport limit applies to the entire request, including instructions, tool definitions, conversation text, tool results, and attachments. The adapter checks the actual UTF-8 JSON body against an 18,000,000-byte budget, leaving headroom below the downstream 20 MB limit. Oversized requests return `context_length_exceeded` so Codex recognizes the context limit. The same conversion applies when Perplexity reports its downstream limit in an HTTP error or failed streaming response. Other provider errors retain their original behavior.
 
-If a conversation reaches this limit, use `/compact` and retry. The adapter preserves all text and image data; it does not silently truncate tool results, remove messages, or reduce image quality. A single attachment, tool definition, or result that exceeds the budget must be reduced at its source.
+In 0.1.11, streaming size failures are emitted as `response.failed` events so Codex recognizes them during compaction. Version 0.1.10 returned HTTP errors that some Codex clients treated as generic errors, preventing compaction retries. If a conversation reaches this limit, use `/compact` and retry. The adapter preserves all text and image data; it does not silently truncate tool results, remove messages, or reduce image quality. A single attachment, tool definition, or result that exceeds the budget must be reduced at its source.
 
 ## Data handling and governance
 
