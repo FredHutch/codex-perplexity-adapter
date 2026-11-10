@@ -1,3 +1,20 @@
+# v0.1.10
+
+Fix image-bearing tool results being flattened into JSON text. Custom and ordinary tool results now preserve ordered native image and text parts, image data, and tool-call associations. Codex's `original` image detail hint maps to `high`; text-only behavior remains compatible.
+
+Handle the transport-size limit for complete requests, including instructions, tool definitions, text history, tool results, and attachments. The adapter measures the actual UTF-8 JSON body against an 18,000,000-byte budget, leaving headroom below Perplexity's downstream 20 MB limit. Oversized requests and recognized provider transport-size errors return `context_length_exceeded`, including failed streaming responses. Other provider errors retain their behavior.
+
+Use `/compact` and retry when a chat reaches the limit. This change does not raise the provider's limit or guarantee automatic compaction. It does not discard history, truncate tool results, or reduce image quality; a single oversized attachment or result may need reduction at its source.
+
+## Verification
+
+- All 60 tests pass on Python 3.10.20, 3.12.13, 3.13.14, and local Python 3.14. Coverage includes image preservation, replay, text compatibility, exact UTF-8 size boundaries, text-only oversized requests, provider HTTP 400/413 conversion, failed-stream conversion, and unrelated-error preservation.
+- The running Apple Silicon packaged app passed live text, incremental streaming, namespaced and custom image tool calls in JSON and streaming mode, image-history replay, ordinary text-tool follow-up, commentary completion, and event-number checks. Synthetic images were recognized against expected answers withheld from prompts.
+- Actual Codex CLI 0.152.0 image viewing and follow-up replay passed against the image fix; the CLI used fallback metadata for the model.
+- Both JSON and streaming requests containing over 22 MB of text returned the recognized context-limit error from the packaged server. Recovery of the original oversized user conversation was not verified.
+
+---
+
 # v0.1.8
 
 Fix streamed commentary disappearing from conversation history and being repeated on later turns. A live diagnostic reproduced the defect in v0.1.7: “Checking the fixture.” arrived as text deltas, but had no message completion event and was absent from the terminal response output. A controlled follow-up repeated the update with that history and stopped repeating it when the missing commentary was restored.

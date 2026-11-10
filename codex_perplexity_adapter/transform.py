@@ -91,7 +91,7 @@ class ToolContext:
 
 
 def stringify_tool_output(output: Any) -> str:
-    """Flatten Codex content blocks into Perplexity's string output format."""
+    """Retain the legacy string conversion for text-only custom results."""
     if isinstance(output, str):
         return output
     if isinstance(output, list):
@@ -107,6 +107,31 @@ def stringify_tool_output(output: Any) -> str:
     if output is None:
         return ""
     return str(output)
+
+
+def _normalize_tool_output(output: Any, *, custom: bool) -> Any:
+    """Keep images as native content parts rather than JSON inside text."""
+    if not isinstance(output, list) or not any(
+        isinstance(block, dict) and block.get("type") == "input_image"
+        for block in output
+    ):
+        return stringify_tool_output(output) if custom else output
+
+    parts: list[dict[str, Any]] = []
+    for block in output:
+        if isinstance(block, dict) and block.get("type") == "input_image":
+            # Perplexity rejects Codex-only fields and the `original` hint.
+            image = {key: block[key] for key in ("type", "image_url", "detail") if key in block}
+            if image.get("detail") == "original":
+                image["detail"] = "high"
+            parts.append(image)
+        elif isinstance(block, dict) and isinstance(block.get("text"), str):
+            parts.append({"type": "input_text", "text": block["text"]})
+        elif isinstance(block, str):
+            parts.append({"type": "input_text", "text": block})
+        else:
+            parts.append({"type": "input_text", "text": json.dumps(block, separators=(",", ":"))})
+    return parts
 
 
 def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
@@ -134,10 +159,12 @@ def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
             )
             normalized.append(converted)
             continue
-        if item_type == "custom_tool_call_output":
+        if item_type in {"custom_tool_call_output", "function_call_output"}:
             converted = dict(item)
             converted["type"] = "function_call_output"
-            converted["output"] = stringify_tool_output(converted.get("output"))
+            converted["output"] = _normalize_tool_output(
+                converted.get("output"), custom=item_type == "custom_tool_call_output"
+            )
             normalized.append(converted)
             continue
         if "type" not in item:
