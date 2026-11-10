@@ -146,6 +146,9 @@ class ResponsesStreamNormalizer:
         self.content_done: set[tuple[int, int]] = set()
         self.text: dict[tuple[int, int], str] = {}
         self.message_items_started: set[int] = set()
+        self.messages: dict[int, dict[str, Any]] = {}
+        self.completed_items: dict[int, dict[str, Any]] = {}
+        self.text_done: set[tuple[int, int]] = set()
         self.custom_item_ids: set[str] = set()
         self.custom_call_ids: set[str] = set()
         self.custom_call_items: dict[str, tuple[str, int]] = {}
@@ -189,12 +192,11 @@ class ResponsesStreamNormalizer:
         if not completed or not isinstance(content, list):
             content = []
         if completed and not content:
-            full_text = "".join(
-                text
+            content = self.messages.get(output_index, {}).get("content") or [
+                {"type": "output_text", "text": text, "annotations": []}
                 for (item_output_index, _), text in sorted(self.text.items())
                 if item_output_index == output_index
-            )
-            content = [{"type": "output_text", "text": full_text, "annotations": []}]
+            ] or [{"type": "output_text", "text": "", "annotations": []}]
 
         canonical: dict[str, Any] = {
             "id": item_id,
@@ -202,14 +204,18 @@ class ResponsesStreamNormalizer:
             "role": "assistant",
             "content": content,
         }
-        phase = item.get("phase")
+        phase = item.get("phase") or self.messages.get(output_index, {}).get("phase")
         if phase in {"commentary", "final_answer"}:
             canonical["phase"] = phase
+        self.messages[output_index] = canonical
         return canonical
 
     def _message_item_added(self, output_index: int, item_id: str) -> dict[str, Any]:
         self.item_ids[output_index] = item_id
         self.message_items_started.add(output_index)
+        self.messages[output_index] = {
+            "id": item_id, "type": "message", "role": "assistant", "content": [],
+        }
         return {
             "type": "response.output_item.added",
             "output_index": output_index,
@@ -220,6 +226,81 @@ class ResponsesStreamNormalizer:
                 "content": [],
             },
         }
+
+    def _finish_message(self, output_index: int, phase: str) -> list[dict[str, Any]]:
+        """Close a streamed message once its commentary/answer boundary is known."""
+        if output_index in self.completed_items:
+            return []
+        item = self._canonical_message_item(self.messages[output_index], output_index, completed=True)
+        item.setdefault("phase", phase)
+        self.messages[output_index] = item
+        emitted: list[dict[str, Any]] = []
+        for content_index, part in enumerate(item["content"]):
+            if not isinstance(part, dict) or part.get("type") != "output_text":
+                continue
+            key = (output_index, content_index)
+            coordinates = {"output_index": output_index, "content_index": content_index, "item_id": item["id"]}
+            if key not in self.content_started:
+                emitted.append(self._number({"type": "response.content_part.added", **coordinates,
+                                             "part": {"type": "output_text", "text": "", "annotations": []}}))
+                self.content_started.add(key)
+            if key not in self.text_done:
+                emitted.append(self._number({"type": "response.output_text.done", **coordinates,
+                                             "text": part.get("text", "")}))
+                self.text_done.add(key)
+            if key not in self.content_done:
+                emitted.append(self._number({"type": "response.content_part.done", **coordinates, "part": part}))
+                self.content_done.add(key)
+        emitted.append(self._number({"type": "response.output_item.done", "output_index": output_index, "item": item}))
+        self.completed_items[output_index] = item
+        return emitted
+
+    def _finish_before_tool(self, output_index: int) -> list[dict[str, Any]]:
+        emitted: list[dict[str, Any]] = []
+        for index in sorted(self.messages):
+            if index < output_index:
+                emitted.extend(self._finish_message(index, "commentary"))
+        return emitted
+
+    def _complete_response(self, event: dict[str, Any]) -> list[dict[str, Any]]:
+        response = event.get("response")
+        if not isinstance(response, dict) or response.get("status") not in {None, "completed"}:
+            return [self._number(event)]
+        emitted: list[dict[str, Any]] = []
+        output = response.get("output")
+        output = output if isinstance(output, list) else []
+        # Perplexity may omit streamed commentary from output, compressing its
+        # indexes. Match existing items by ID rather than the terminal position.
+        indexes = {item_id: index for index, item_id in self.item_ids.items()}
+        terminal_items = dict(self.completed_items)
+        for position, item in enumerate(output):
+            if not isinstance(item, dict):
+                continue
+            index = indexes.get(item.get("id"))
+            if index is None:
+                index = position
+                while index in self.item_ids or index in terminal_items:
+                    index += 1
+            if item.get("type") == "message":
+                if index not in self.messages:
+                    added = self._canonical_message_item(item, index, completed=False)
+                    emitted.append(self._number({"type": "response.output_item.added", "output_index": index, "item": added}))
+                    self.message_items_started.add(index)
+                if index not in self.completed_items:
+                    self._canonical_message_item(item, index, completed=True)
+            else:
+                terminal_items[index] = item
+        tool_indexes = [index for index, item in terminal_items.items()
+                        if item.get("type") in {"function_call", "custom_tool_call"}]
+        for index in sorted(self.messages):
+            phase = "commentary" if any(tool_index > index for tool_index in tool_indexes) else "final_answer"
+            emitted.extend(self._finish_message(index, phase))
+        terminal_items.update(self.completed_items)
+        # Preserve non-object extension output entries as well.
+        merged = [terminal_items[index] for index in sorted(terminal_items)]
+        merged.extend(item for item in output if not isinstance(item, dict))
+        emitted.append(self._number({**event, "response": {**response, "output": merged}}))
+        return emitted
 
     def _custom_input_events(self, item_id: str, output_index: int, custom_input: str) -> list[dict[str, Any]]:
         if item_id in self.custom_input_done:
@@ -245,6 +326,9 @@ class ResponsesStreamNormalizer:
         event = transform_response(payload, self.tool_context)
         event_type = event.get("type")
         emitted: list[dict[str, Any]] = []
+
+        if event_type == "response.completed":
+            return self._complete_response(event)
 
         if event_type in {
             "response.function_call_arguments.delta",
@@ -289,6 +373,8 @@ class ResponsesStreamNormalizer:
                 event = {**event, "output_index": output_index, "item": canonical}
                 self.message_items_started.add(output_index)
             elif isinstance(item, dict) and isinstance(item.get("id"), str):
+                if item.get("type") in {"function_call", "custom_tool_call"}:
+                    emitted.extend(self._finish_before_tool(output_index))
                 self.item_ids[output_index] = item["id"]
                 if item.get("type") == "custom_tool_call":
                     self.custom_item_ids.add(item["id"])
@@ -303,8 +389,18 @@ class ResponsesStreamNormalizer:
             output_index, _, _ = self._coordinates(event)
             item = event.get("item")
             if isinstance(item, dict) and item.get("type") == "message":
+                if output_index in self.completed_items:
+                    return emitted
+                if output_index not in self.message_items_started:
+                    canonical = self._canonical_message_item(item, output_index, completed=False)
+                    emitted.append(self._number({"type": "response.output_item.added", "output_index": output_index, "item": canonical}))
+                    self.message_items_started.add(output_index)
                 canonical = self._canonical_message_item(item, output_index, completed=True)
-                event = {**event, "output_index": output_index, "item": canonical}
+                # An unlabelled done event alone cannot tell us whether a tool
+                # follows. Resolve its phase at the next tool or terminal event.
+                if canonical.get("phase"):
+                    emitted.extend(self._finish_message(output_index, canonical["phase"]))
+                return emitted
             elif isinstance(item, dict) and item.get("type") == "custom_tool_call":
                 item_id = item.get("id")
                 if isinstance(item_id, str):
@@ -316,6 +412,12 @@ class ResponsesStreamNormalizer:
                     emitted.extend(self._custom_input_events(item_id, output_index, custom_input))
                     self.custom_argument_buffers.pop(item_id, None)
                     self.custom_inputs.pop(item_id, None)
+            if isinstance(item, dict):
+                if isinstance(item.get("id"), str):
+                    self.item_ids[output_index] = item["id"]
+                if item.get("type") in {"function_call", "custom_tool_call"}:
+                    emitted.extend(self._finish_before_tool(output_index))
+                self.completed_items[output_index] = item
 
         if event_type in {"response.output_text.delta", "response.output_text.done"}:
             output_index, content_index, item_id = self._coordinates(event)
@@ -343,6 +445,12 @@ class ResponsesStreamNormalizer:
                 self.content_started.add(key)
             if event_type == "response.output_text.delta" and isinstance(event.get("delta"), str):
                 self.text[key] = self.text.get(key, "") + event["delta"]
+            elif event_type == "response.output_text.done":
+                if key in self.text_done:
+                    return emitted
+                self.text_done.add(key)
+                if isinstance(event.get("text"), str):
+                    self.text[key] = event["text"]
 
         if event_type == "response.content_part.added":
             output_index, content_index, _ = self._coordinates(event)
@@ -393,7 +501,7 @@ async def _translate_sse(
         "response.output_text.delta", "response.output_text.done",
         "response.content_part.added", "response.content_part.done",
         "response.function_call_arguments.delta", "response.function_call_arguments.done",
-        "response.created", "response.in_progress", "response.completed", "response.failed",
+        "response.created", "response.in_progress", "response.completed", "response.failed", "response.incomplete",
     }
     try:
         async for line in upstream.aiter_lines():
@@ -403,26 +511,7 @@ async def _translate_sse(
                     if data != "[DONE]":
                         try:
                             parsed = json.loads(data)
-                            ordinary_function_event = False
-                            if isinstance(parsed, dict):
-                                event_type = parsed.get("type")
-                                if event_type in {"response.output_item.added", "response.output_item.done"}:
-                                    item = parsed.get("item")
-                                    ordinary_function_event = (
-                                        isinstance(item, dict)
-                                        and item.get("type") == "function_call"
-                                        and item.get("name") not in tool_context.custom_names
-                                        and item.get("name") not in tool_context.namespace_tools
-                                    )
-                                elif event_type in {
-                                    "response.function_call_arguments.delta",
-                                    "response.function_call_arguments.done",
-                                }:
-                                    ordinary_function_event = (
-                                        parsed.get("item_id") not in normalizer.custom_item_ids
-                                        and parsed.get("call_id") not in normalizer.custom_call_ids
-                                    )
-                            if isinstance(parsed, dict) and parsed.get("type") in normalized_types and not ordinary_function_event:
+                            if isinstance(parsed, dict) and parsed.get("type") in normalized_types:
                                 for event in normalizer.normalize(parsed):
                                     event_type = event.get("type", "message")
                                     encoded = json.dumps(event, separators=(",", ":"))

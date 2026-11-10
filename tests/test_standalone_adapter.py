@@ -795,7 +795,7 @@ class IncrementalStreamingTests(unittest.IsolatedAsyncioTestCase):
         output = b"".join([chunk async for chunk in _translate_sse(upstream, ToolContext(), client)])
         self.assertEqual(output, frame)
 
-    async def test_ordinary_function_sse_frames_are_unchanged(self):
+    async def test_ordinary_function_sse_payloads_preserved_with_adapter_sequence(self):
         client = httpx.AsyncClient()
         frames = (
             b'event: response.output_item.added\ndata: {"type":"response.output_item.added","output_index":0,"item":{"id":"fc_1","type":"function_call","name":"weather","call_id":"call_1"}}\n\n'
@@ -806,7 +806,10 @@ class IncrementalStreamingTests(unittest.IsolatedAsyncioTestCase):
             request=httpx.Request("POST", "https://example.test/v1/responses"),
         )
         output = b"".join([chunk async for chunk in _translate_sse(upstream, ToolContext({"exec"}), client)])
-        self.assertEqual(output, frames)
+        original = [json.loads(line[5:]) for line in frames.decode().splitlines() if line.startswith('data:')]
+        translated = [json.loads(line[5:]) for line in output.decode().splitlines() if line.startswith('data:')]
+        self.assertEqual([event.pop('sequence_number') for event in translated], [0, 1])
+        self.assertEqual(translated, original)
 
     async def test_translator_yields_before_upstream_finishes(self):
         client = httpx.AsyncClient()
@@ -834,8 +837,152 @@ class IncrementalStreamingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(b'"delta":"second"', remaining)
         self.assertGreaterEqual(time.monotonic() - started, 0.14)
 
+    async def test_live_shaped_mixed_stream_closes_commentary_and_renumbers_tools(self):
+        tool = {'id': 'fc_1', 'type': 'function_call', 'name': 'inspect', 'call_id': 'call_1', 'arguments': '{}'}
+        frames = [
+            {'type': 'response.created', 'sequence_number': 0},
+            {'type': 'response.output_item.added', 'output_index': 0, 'sequence_number': 1,
+             'item': {'id': 'msg_0', 'type': 'message', 'role': 'assistant', 'content': []}},
+            {'type': 'response.output_text.delta', 'output_index': 0, 'item_id': 'msg_0',
+             'sequence_number': 2, 'delta': 'Checking the fixture.'},
+            {'type': 'response.output_item.added', 'output_index': 1, 'sequence_number': 10, 'item': tool},
+            {'type': 'response.function_call_arguments.done', 'output_index': 1, 'item_id': 'fc_1',
+             'sequence_number': 11, 'arguments': '{}'},
+            {'type': 'response.output_item.done', 'output_index': 1, 'sequence_number': 12, 'item': tool},
+            {'type': 'response.completed', 'sequence_number': 13,
+             'response': {'status': 'completed', 'output': [tool]}},
+        ]
+        upstream = httpx.Response(200, content=''.join('data: ' + json.dumps(event) + '\n\n' for event in frames),
+                                  request=httpx.Request('POST', 'https://example.test/v1/responses'))
+        client = httpx.AsyncClient()
+        raw = b''.join([chunk async for chunk in _translate_sse(upstream, ToolContext(), client)])
+        events = [json.loads(line[5:]) for line in raw.decode().splitlines() if line.startswith('data:')]
+        self.assertEqual([event['sequence_number'] for event in events], list(range(len(events))))
+        output = events[-1]['response']['output']
+        self.assertEqual([item['id'] for item in output], ['msg_0', 'fc_1'])
+        self.assertEqual(output[0]['phase'], 'commentary')
+        self.assertEqual(output[0]['content'][0]['text'], 'Checking the fixture.')
+        self.assertEqual(output[1], tool)
+        done_position = next(i for i, event in enumerate(events) if event['type'] == 'response.output_item.done' and event['item']['id'] == 'msg_0')
+        call_position = next(i for i, event in enumerate(events) if event['type'] == 'response.output_item.added' and event['item']['id'] == 'fc_1')
+        self.assertLess(done_position, call_position)
+
 
 class StreamSchemaTests(unittest.TestCase):
+    def _message(self, index=0, text=None, phase=None):
+        item = {'id': f'msg_{index}', 'type': 'message', 'role': 'assistant', 'content': []}
+        if text is not None:
+            item['content'] = [{'type': 'output_text', 'text': text, 'annotations': []}]
+        if phase is not None:
+            item['phase'] = phase
+        return item
+
+    def _tool(self, index=1):
+        return {'id': f'fc_{index}', 'type': 'function_call', 'name': 'inspect',
+                'call_id': f'call_{index}', 'arguments': '{}'}
+
+    def _stream_message(self, normalizer, index, text, phase=None):
+        return normalizer.normalize({'type': 'response.output_item.added', 'output_index': index,
+                                     'item': self._message(index, phase=phase)}) + normalizer.normalize({
+            'type': 'response.output_text.delta', 'output_index': index,
+            'item_id': f'msg_{index}', 'delta': text})
+
+    def test_missing_commentary_is_completed_before_tool_and_replayed(self):
+        normalizer = ResponsesStreamNormalizer(ToolContext())
+        events = self._stream_message(normalizer, 0, 'Checking the fixture.')
+        tool = self._tool()
+        boundary = normalizer.normalize({'type': 'response.output_item.added', 'output_index': 1, 'item': tool})
+        self.assertEqual([event['type'] for event in boundary], [
+            'response.output_text.done', 'response.content_part.done',
+            'response.output_item.done', 'response.output_item.added'])
+        events += boundary + normalizer.normalize({'type': 'response.output_item.done', 'output_index': 1, 'item': tool})
+        events += normalizer.normalize({'type': 'response.completed', 'response': {'status': 'completed', 'output': [tool]}})
+        output = events[-1]['response']['output']
+        self.assertEqual([item['id'] for item in output], ['msg_0', 'fc_1'])
+        self.assertEqual(output[0]['phase'], 'commentary')
+        self.assertEqual(output[0]['content'][0]['text'], 'Checking the fixture.')
+        self.assertEqual(output[1], tool)
+        self.assertEqual([event['sequence_number'] for event in events], list(range(len(events))))
+        history, _ = transform_request({'input': output + [{'type': 'function_call_output', 'call_id': 'call_1', 'output': 'PASS'}]}, 'openai/gpt-6.1-sol')
+        self.assertEqual(history['input'][0], output[0])
+        self.assertEqual(history['input'][1]['call_id'], history['input'][2]['call_id'])
+
+    def test_phase_present_only_at_start_survives_completion(self):
+        for phase in ('commentary', 'final_answer'):
+            with self.subTest(phase=phase):
+                normalizer = ResponsesStreamNormalizer(ToolContext())
+                self._stream_message(normalizer, 0, 'Hello', phase)
+                done = normalizer.normalize({'type': 'response.output_item.done', 'output_index': 0, 'item': self._message(text='Hello')})
+                self.assertEqual(done[-1]['item']['phase'], phase)
+                completed = normalizer.normalize({'type': 'response.completed', 'response': {'status': 'completed', 'output': [self._message(text='Hello')]}})
+                self.assertEqual(completed[-1]['response']['output'][0]['phase'], phase)
+
+    def test_unlabelled_done_waits_for_tool_or_successful_completion(self):
+        for tool_follows in (False, True):
+            with self.subTest(tool_follows=tool_follows):
+                normalizer = ResponsesStreamNormalizer(ToolContext())
+                self._stream_message(normalizer, 0, 'Hello')
+                self.assertEqual(normalizer.normalize({'type': 'response.output_item.done', 'output_index': 0,
+                                                      'item': self._message(text='Hello')}), [])
+                if tool_follows:
+                    events = normalizer.normalize({'type': 'response.output_item.added', 'output_index': 1, 'item': self._tool()})
+                else:
+                    events = normalizer.normalize({'type': 'response.completed', 'response': {'status': 'completed', 'output': []}})
+                message = next(event['item'] for event in events if event['type'] == 'response.output_item.done')
+                self.assertEqual(message['phase'], 'commentary' if tool_follows else 'final_answer')
+
+    def test_existing_lifecycle_events_are_not_duplicated(self):
+        normalizer = ResponsesStreamNormalizer(ToolContext())
+        events = self._stream_message(normalizer, 0, 'Hello', 'final_answer')
+        payloads = [
+            {'type': 'response.output_text.done', 'output_index': 0, 'text': 'Hello'},
+            {'type': 'response.content_part.done', 'output_index': 0, 'part': self._message(text='Hello')['content'][0]},
+            {'type': 'response.output_item.done', 'output_index': 0, 'item': self._message(text='Hello')},
+        ]
+        for payload in payloads + payloads:
+            events += normalizer.normalize(payload)
+        events += normalizer.normalize({'type': 'response.completed', 'response': {'status': 'completed', 'output': [self._message(text='Hello')]}})
+        for event_type in ('response.output_text.done', 'response.content_part.done', 'response.output_item.done'):
+            self.assertEqual(sum(event['type'] == event_type for event in events), 1, event_type)
+        self.assertEqual(len(events[-1]['response']['output']), 1)
+
+    def test_multiple_messages_and_tools_preserve_order_and_content_parts(self):
+        normalizer = ResponsesStreamNormalizer(ToolContext())
+        events = self._stream_message(normalizer, 0, 'First')
+        for index in (1, 2):
+            events += normalizer.normalize({'type': 'response.output_item.added', 'output_index': index, 'item': self._tool(index)})
+            events += normalizer.normalize({'type': 'response.output_item.done', 'output_index': index, 'item': self._tool(index)})
+        events += self._stream_message(normalizer, 3, 'Last')
+        events += normalizer.normalize({'type': 'response.output_text.delta', 'output_index': 3, 'content_index': 1,
+                                       'item_id': 'msg_3', 'delta': ' second part'})
+        events += normalizer.normalize({'type': 'response.completed', 'response': {'status': 'completed', 'output': [self._tool(1), self._tool(2)]}})
+        output = events[-1]['response']['output']
+        self.assertEqual([item['id'] for item in output], ['msg_0', 'fc_1', 'fc_2', 'msg_3'])
+        self.assertEqual([output[0]['phase'], output[3]['phase']], ['commentary', 'final_answer'])
+        self.assertEqual([part['text'] for part in output[3]['content']], ['Last', ' second part'])
+        self.assertEqual([event['sequence_number'] for event in events], list(range(len(events))))
+
+    def test_terminal_only_message_gets_complete_lifecycle(self):
+        normalizer = ResponsesStreamNormalizer(ToolContext())
+        events = normalizer.normalize({'type': 'response.completed', 'response': {'status': 'completed', 'output': [self._message(text='Hello')]}})
+        self.assertEqual([event['type'] for event in events], [
+            'response.output_item.added', 'response.content_part.added', 'response.output_text.done',
+            'response.content_part.done', 'response.output_item.done', 'response.completed'])
+        self.assertEqual(events[-1]['response']['output'][0]['phase'], 'final_answer')
+        self.assertEqual(events[-1]['response']['output'][0]['content'][0]['text'], 'Hello')
+
+    def test_failed_or_incomplete_response_is_not_finalized(self):
+        for event_type, status in [('response.failed', 'failed'), ('response.incomplete', 'incomplete'),
+                                   ('response.completed', 'incomplete')]:
+            with self.subTest(event_type=event_type, status=status):
+                normalizer = ResponsesStreamNormalizer(ToolContext())
+                self._stream_message(normalizer, 0, 'Partial')
+                payload = {'type': event_type, 'response': {'status': status, 'output': [], 'error': {'message': 'failure'}}}
+                events = normalizer.normalize(payload)
+                self.assertEqual(len(events), 1)
+                self.assertEqual({k: v for k, v in events[0].items() if k != 'sequence_number'}, payload)
+                self.assertFalse(normalizer.completed_items)
+
     def test_message_phases_and_streamed_text_survive_completion(self):
         normalizer = ResponsesStreamNormalizer(ToolContext())
         for index, phase in enumerate(('commentary', 'final_answer')):

@@ -1,3 +1,19 @@
+# v0.1.8
+
+Fix streamed commentary disappearing from conversation history and being repeated on later turns. A live diagnostic reproduced the defect in v0.1.7: “Checking the fixture.” arrived as text deltas, but had no message completion event and was absent from the terminal response output. A controlled follow-up repeated the update with that history and stopped repeating it when the missing commentary was restored.
+
+The adapter now completes unfinished commentary before tool calls and includes it in completed response output. It preserves known assistant phases across stream events; when upstream omits phases, messages before tool calls become commentary and terminal answers become final answers. Recognized events share one sequence counter, fixing backwards numbering when ordinary function calls mixed with normalized text events. Failed and incomplete responses remain visible, and existing completion events are not duplicated.
+
+## Verification
+
+- All 49 local tests pass, including the live-shaped missing-commentary stream, phase present only at message start, mixed event numbering, multiple messages/tools/content parts, duplicate completion prevention, terminal-only messages, and failure preservation.
+- All 49 tests also pass on Python 3.10.20, 3.12.13, and 3.13.14. The Python wheel builds successfully and its adapter modules match the repaired source.
+- Live checks through the patched source adapter passed: commentary appears in both item-completion events and terminal output, sequence numbers increase consistently, and ordinary follow-up history returns “PASS” without repeating “Checking the fixture.”
+- An actual Codex CLI 0.152.0 run completed three separate shell tool-result turns. Persisted history contains each unique commentary marker exactly once with `phase: "commentary"`, followed by the expected final answer with `phase: "final_answer"`. The tools printed synthetic markers and did not modify files.
+- macOS packaging and notarization verification are pending; the release stays in draft until they pass.
+
+---
+
 # v0.1.7
 
 Fix conversations that continue following obsolete Plan instructions after Codex switches to Default mode. The adapter now retains the latest explicit developer collaboration mode and removes superseded mode blocks from replayed history. Permissions and other instructions remain intact; user messages, assistant replies, and tool outputs do not select the mode.
