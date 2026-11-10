@@ -12,7 +12,6 @@ The adapter now completes unfinished commentary before tool calls and includes i
 - An actual Codex CLI 0.152.0 run completed three separate shell tool-result turns. Persisted history contains each unique commentary marker exactly once with `phase: "commentary"`, followed by the expected final answer with `phase: "final_answer"`. The tools printed synthetic markers and did not modify files.
 - Both Apple Silicon and Intel packaged servers passed live commentary persistence, consistent sequence numbering, tool-result follow-up, and repetition checks. App metadata reports 0.1.8, launcher/server architectures match, all frozen adapter modules match the release source, and the bundled certificate data matches patched `certifi` 2026.10.18.
 - Apple accepted both builds on November 9, 2026. Notarization tickets are stapled and validated; strict nested signatures, hardened runtime, expected server entitlements, and Gatekeeper acceptance passed. The final ZIPs were re-extracted and their tickets, signatures, version, and Gatekeeper acceptance were verified again. Submission IDs: `1128197e-1fe3-45ab-986e-536787e5d63f` (Apple Silicon) and `243e0a28-f3c9-4f4d-b0d4-4020c2c7c116` (Intel).
-- GitHub-hosted CI could not run because FredHutch's organization policy disables Actions for this repository. Verification used the passed local Python 3.10/3.12/3.13 matrix, live source and Codex checks, and both notarized packaged-server checks; GitHub CI is not claimed as passed.
 
 ---
 
