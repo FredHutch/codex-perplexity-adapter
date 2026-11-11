@@ -27,6 +27,7 @@
 @property(strong) NSSecureTextField *keyField;
 @property(strong) NSButton *startButton;
 @property(strong) NSButton *stopButton;
+@property(strong) NSButton *resizeCheckbox;
 @property(strong) NSTextField *statusLabel;
 @property(strong) NSStackView *contentStack;
 @property(strong) NSArray<NSTextField *> *budgetLabels;
@@ -38,9 +39,18 @@
 
 @implementation AppDelegate
 
+- (NSInteger)serverPort {
+    return 4000;
+}
+
+- (NSString *)stateName {
+    return [NSBundle.mainBundle.infoDictionary[@"AdapterTestCandidate"] boolValue] ? @"Codex Perplexity Adapter Test" : @"Codex Perplexity Adapter";
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [self buildApplicationMenu];
+    [NSUserDefaults.standardUserDefaults registerDefaults:@{@"ResizeImagesOnLimit": @YES}];
     [self buildWindow];
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];
@@ -117,7 +127,7 @@
                   styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                     backing:NSBackingStoreBuffered
                       defer:NO];
-    self.window.title = @"Codex–Perplexity Adapter";
+    self.window.title = [NSBundle.mainBundle.infoDictionary[@"AdapterTestCandidate"] boolValue] ? @"Codex–Perplexity Adapter Test" : @"Codex–Perplexity Adapter";
     self.window.releasedWhenClosed = NO;
 
     NSView *content = self.window.contentView;
@@ -125,7 +135,7 @@
     title.font = [NSFont systemFontOfSize:24 weight:NSFontWeightSemibold];
 
     NSTextField *description = [NSTextField wrappingLabelWithString:
-        @"Runs a private local Responses API at 127.0.0.1:4000 for Codex. Your Perplexity key stays in this process and is never saved."];
+        [NSString stringWithFormat:@"Runs a private local Responses API at 127.0.0.1:%ld for Codex. Your Perplexity key stays in memory and is never saved.", (long)[self serverPort]]];
     description.textColor = NSColor.secondaryLabelColor;
     [self.wrappingLabels addObject:description];
 
@@ -171,8 +181,14 @@
         [button setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
     }
 
+    self.resizeCheckbox = [NSButton checkboxWithTitle:@"Resize images in oversized requests" target:self action:@selector(resizeChanged:)];
+    self.resizeCheckbox.state = [NSUserDefaults.standardUserDefaults boolForKey:@"ResizeImagesOnLimit"] ? NSControlStateValueOn : NSControlStateValueOff;
+    NSTextField *resizeHelp = [NSTextField wrappingLabelWithString:@"Shrinks older images to fit; small text may become harder to read."];
+    resizeHelp.font = [NSFont systemFontOfSize:12];
+    resizeHelp.textColor = NSColor.secondaryLabelColor;
+    [self.wrappingLabels addObject:resizeHelp];
     NSMutableArray<NSTextField *> *budgetLabels = [NSMutableArray array];
-    for (NSInteger row = 0; row < 4; row++) {
+    for (NSInteger row = 0; row < 5; row++) {
         NSTextField *label = [NSTextField wrappingLabelWithString:@""];
         label.font = [NSFont systemFontOfSize:12];
         label.textColor = NSColor.secondaryLabelColor;
@@ -185,7 +201,7 @@
     statistics.alignment = NSLayoutAttributeLeading;
     statistics.spacing = 2;
     statistics.detachesHiddenViews = YES;
-    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, buttonRow, statistics]];
+    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, self.resizeCheckbox, resizeHelp, buttonRow, statistics]];
     self.contentStack = stack;
     stack.orientation = NSUserInterfaceLayoutOrientationVertical;
     stack.alignment = NSLayoutAttributeLeading;
@@ -202,6 +218,7 @@
         [statistics.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [self.keyField.heightAnchor constraintEqualToConstant:28],
         [description.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [resizeHelp.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
     ]];
     for (NSTextField *label in self.budgetLabels) {
         [label.widthAnchor constraintEqualToAnchor:statistics.widthAnchor].active = YES;
@@ -249,7 +266,12 @@
         [NSString stringWithFormat:@"Warnings: %ld · Size failures: %@ · Limit: 19 MB", (long)warnings, values[@"size_failures"]],
         [NSString stringWithFormat:@"Continuations: %@ · Replays: %@ · Fallbacks: %@", values[@"continuation_requests"], values[@"full_replay_requests"], values[@"continuation_fallbacks"]],
         [NSString stringWithFormat:@"Tool replays: %@ · Saved: %.2f MB", values[@"tool_boundary_replays"], [values[@"saved_request_bytes"] doubleValue] / 1000000],
+        [NSString stringWithFormat:@"Image resizes: %@ · Images: %@ · Image saved: %.2f MB", values[@"image_resize_requests"] ?: @0, values[@"resized_images"] ?: @0, [values[@"image_saved_request_bytes"] doubleValue] / 1000000],
     ]];
+}
+
+- (void)resizeChanged:(id)sender {
+    [NSUserDefaults.standardUserDefaults setBool:self.resizeCheckbox.state == NSControlStateValueOn forKey:@"ResizeImagesOnLimit"];
 }
 
 - (void)pasteKeyClicked:(id)sender {
@@ -264,8 +286,10 @@
 }
 
 - (NSArray<NSString *> *)serverArguments {
-    return @[@"--port", @"4000", @"--log-level", @"info",
-             @"--pid-file", self.pidURL.path, @"--continuation", @"auto"];
+    NSMutableArray *arguments = [@[@"--port", [NSString stringWithFormat:@"%ld", (long)[self serverPort]], @"--log-level", @"info",
+             @"--pid-file", self.pidURL.path, @"--continuation", @"auto"] mutableCopy];
+    if (self.resizeCheckbox.state == NSControlStateValueOn) [arguments addObject:@"--resize-images-on-limit"];
+    return arguments;
 }
 
 - (void)startClicked:(id)sender {
@@ -283,7 +307,7 @@
     }
 
     NSURL *appSupport = [NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject;
-    NSURL *stateDirectory = [appSupport URLByAppendingPathComponent:@"Codex Perplexity Adapter" isDirectory:YES];
+    NSURL *stateDirectory = [appSupport URLByAppendingPathComponent:[self stateName] isDirectory:YES];
     [NSFileManager.defaultManager createDirectoryAtURL:stateDirectory withIntermediateDirectories:YES attributes:nil error:nil];
     self.pidURL = [stateDirectory URLByAppendingPathComponent:@"server.pid"];
     [self stopRecordedServer];
@@ -298,7 +322,7 @@
     NSURL *library = [NSFileManager.defaultManager URLsForDirectory:NSLibraryDirectory inDomains:NSUserDomainMask].firstObject;
     NSURL *logDirectory = [library URLByAppendingPathComponent:@"Logs" isDirectory:YES];
     [NSFileManager.defaultManager createDirectoryAtURL:logDirectory withIntermediateDirectories:YES attributes:nil error:nil];
-    NSURL *logURL = [logDirectory URLByAppendingPathComponent:@"Codex Perplexity Adapter.log"];
+    NSURL *logURL = [logDirectory URLByAppendingPathComponent:[[self stateName] stringByAppendingString:@".log"]];
     [NSFileManager.defaultManager createFileAtPath:logURL.path contents:[NSData data] attributes:nil];
     NSFileHandle *logHandle = [NSFileHandle fileHandleForWritingAtPath:logURL.path];
     task.standardOutput = logHandle;
@@ -312,7 +336,7 @@
             self.serverTask = nil;
             [self setRunning:NO];
             if (finished.terminationStatus != 0) {
-                [self setConnectionStatus:@"● Could not start — port 4000 may be in use" color:NSColor.systemRedColor];
+                [self setConnectionStatus:[NSString stringWithFormat:@"● Could not start — port %ld may be in use", (long)[self serverPort]] color:NSColor.systemRedColor];
             }
         });
     };
@@ -363,7 +387,7 @@
 - (void)stopRecordedServer {
     if (self.pidURL == nil) {
         NSURL *appSupport = [NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject;
-        self.pidURL = [[appSupport URLByAppendingPathComponent:@"Codex Perplexity Adapter" isDirectory:YES]
+        self.pidURL = [[appSupport URLByAppendingPathComponent:[self stateName] isDirectory:YES]
                        URLByAppendingPathComponent:@"server.pid"];
     }
     NSString *pidText = [NSString stringWithContentsOfURL:self.pidURL encoding:NSUTF8StringEncoding error:nil];
@@ -390,12 +414,13 @@
     self.startButton.enabled = !running;
     self.stopButton.enabled = running;
     self.keyField.enabled = !running;
+    self.resizeCheckbox.enabled = !running;
     [self setConnectionStatus:running ? @"● Starting…" : @"● Stopped" color:running ? NSColor.systemOrangeColor : NSColor.secondaryLabelColor];
 }
 
 - (void)refreshBudget {
     if (!self.serverTask.running) return;
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://127.0.0.1:4000/v1/adapter/status"]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://127.0.0.1:%ld/v1/adapter/status", (long)[self serverPort]]]];
     request.timeoutInterval = 2;
     request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
     NSString *token = NSProcessInfo.processInfo.environment[@"ADAPTER_LOCAL_TOKEN"] ?: @"local-adapter-token";
@@ -417,7 +442,7 @@
 
 - (void)verifyHealth:(NSInteger)attempt {
     if (!self.serverTask.running) return;
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"http://127.0.0.1:4000/health"]];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://127.0.0.1:%ld/health", (long)[self serverPort]]]];
     request.timeoutInterval = 1;
     __weak typeof(self) weakSelf = self;
     [[NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
@@ -426,7 +451,7 @@
             if (self == nil || !self.serverTask.running) return;
             NSInteger status = [(NSHTTPURLResponse *)response statusCode];
             if (status == 200 && data != nil) {
-                [self setConnectionStatus:@"● Running at 127.0.0.1:4000" color:NSColor.systemGreenColor];
+                [self setConnectionStatus:[NSString stringWithFormat:@"● Running at 127.0.0.1:%ld", (long)[self serverPort]] color:NSColor.systemGreenColor];
             } else if (attempt < 12) {
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self verifyHealth:attempt + 1];

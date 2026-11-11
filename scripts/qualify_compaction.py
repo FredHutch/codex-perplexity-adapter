@@ -23,7 +23,7 @@ def run(binary):
     def measure(payload):
         measured.append(len(encode_request(payload)))
         return prepare_request_body(payload)
-    guard_patch=patch('codex_perplexity_adapter.app.prepare_request_body', measure)
+    guard_patch=patch('codex_perplexity_adapter.image_resize.prepare_request_body', measure)
     guard_patch.start()
     async def provider(request):
         payload=json.loads(request.content)
@@ -91,7 +91,7 @@ base_url="http://127.0.0.1:{port}/v1"
             report['status']=app.state.continuation.snapshot()
             report['events']=[{'method':e.get('method'),'params':e.get('params')} for e in rpc.pending if e.get('method') in ('error','turn/completed')]
             report['client']=subprocess.check_output([binary,'--version'],text=True).strip()
-            Path('build/qualification-0.1.14/client-guard-compaction.json').write_text(json.dumps(report,indent=2)+chr(10))
+            Path('build/qualification-0.1.15/client-guard-compaction.json').write_text(json.dumps(report,indent=2)+chr(10))
             print(json.dumps(report),flush=True)
     finally:server.should_exit=True;worker.join(timeout=10);guard_patch.stop()
 

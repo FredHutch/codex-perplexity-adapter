@@ -1,0 +1,2463 @@
+{
+  "date": "2026-11-11",
+  "source_commit": "a50b5d463d8d6f15b264c1f04862475409d9a898",
+  "model": "gpt-6.1-sol",
+  "reasoning": "medium",
+  "max_output_tokens": 512,
+  "qualification": {
+    "direct": "failed",
+    "anchor": "qualified",
+    "replay": "control passed"
+  },
+  "matrix": {
+    "3.10": 127,
+    "3.12": 127,
+    "3.13": 127,
+    "local": 127,
+    "intel": 127
+  },
+  "basic_counts": {
+    "replay": {
+      "passed": 8,
+      "total": 8
+    },
+    "direct": {
+      "passed": 0,
+      "total": 8
+    },
+    "anchor": {
+      "passed": 8,
+      "total": 8
+    }
+  },
+  "basic": [
+    {
+      "strategy": "replay",
+      "stream": false,
+      "store": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 631,
+          "requests": [
+            {
+              "body_bytes": 631,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.72,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 912,
+          "requests": [
+            {
+              "body_bytes": 912,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.813,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1255,
+          "requests": [
+            {
+              "body_bytes": 597,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 3.486,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": false,
+      "store": false,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 631,
+          "requests": [
+            {
+              "body_bytes": 631,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.22,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 912,
+          "requests": [
+            {
+              "body_bytes": 912,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 3.118,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1255,
+          "requests": [
+            {
+              "body_bytes": 597,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 3.035,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": false,
+      "store": false,
+      "repeat": 2,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 631,
+          "requests": [
+            {
+              "body_bytes": 631,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.114,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 912,
+          "requests": [
+            {
+              "body_bytes": 912,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.073,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1255,
+          "requests": [
+            {
+              "body_bytes": 597,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.424,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": false,
+      "store": true,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 1.872,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 911,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.201,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1254,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.443,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": true,
+      "store": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.283,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 911,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.249,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1256,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.062,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": true,
+      "store": false,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.502,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 911,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.156,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1256,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.773,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": true,
+      "store": false,
+      "repeat": 2,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.044,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 911,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.33,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1256,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.312,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "replay",
+      "stream": true,
+      "store": true,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 629,
+          "requests": [
+            {
+              "body_bytes": 629,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.83,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 910,
+          "requests": [
+            {
+              "body_bytes": 910,
+              "input_items": 3,
+              "continued": false
+            }
+          ],
+          "seconds": 2.106,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1255,
+          "requests": [
+            {
+              "body_bytes": 595,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.624,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "direct",
+      "stream": false,
+      "store": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 631,
+          "requests": [
+            {
+              "body_bytes": 631,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 1.931,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 400,
+          "status": "http_error",
+          "error": {
+            "type": "invalid_request",
+            "code": 400,
+            "message": "invalid request"
+          },
+          "full_body_bytes": 928,
+          "requests": [
+            {
+              "body_bytes": 563,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.784,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": false,
+      "store": false,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 631,
+          "requests": [
+            {
+              "body_bytes": 631,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.068,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 400,
+          "status": "http_error",
+          "error": {
+            "type": "invalid_request",
+            "code": 400,
+            "message": "invalid request"
+          },
+          "full_body_bytes": 912,
+          "requests": [
+            {
+              "body_bytes": 555,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.797,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": false,
+      "store": false,
+      "repeat": 2,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 631,
+          "requests": [
+            {
+              "body_bytes": 631,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.328,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 400,
+          "status": "http_error",
+          "error": {
+            "type": "invalid_request",
+            "code": 400,
+            "message": "invalid request"
+          },
+          "full_body_bytes": 912,
+          "requests": [
+            {
+              "body_bytes": 555,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.83,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": false,
+      "store": true,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.134,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 400,
+          "status": "http_error",
+          "error": {
+            "type": "invalid_request",
+            "code": 400,
+            "message": "invalid request"
+          },
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 554,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.957,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": true,
+      "store": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.059,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "failed",
+          "error": {
+            "type": "invalid_request",
+            "code": "invalid_request",
+            "message": "invalid request"
+          },
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 554,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.809,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": true,
+      "store": false,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.173,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "failed",
+          "error": {
+            "type": "invalid_request",
+            "code": "invalid_request",
+            "message": "invalid request"
+          },
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 554,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.892,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": true,
+      "store": false,
+      "repeat": 2,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 630,
+          "requests": [
+            {
+              "body_bytes": 630,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 1.948,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "failed",
+          "error": {
+            "type": "invalid_request",
+            "code": "invalid_request",
+            "message": "invalid request"
+          },
+          "full_body_bytes": 911,
+          "requests": [
+            {
+              "body_bytes": 554,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.787,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "direct",
+      "stream": true,
+      "store": true,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 629,
+          "requests": [
+            {
+              "body_bytes": 629,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.462,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "failed",
+          "error": {
+            "type": "invalid_request",
+            "code": "invalid_request",
+            "message": "invalid request"
+          },
+          "full_body_bytes": 910,
+          "requests": [
+            {
+              "body_bytes": 553,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 0.831,
+          "text": "",
+          "tool_calls": 0
+        }
+      ],
+      "passed": false,
+      "retained_seed": false,
+      "retained_result": false
+    },
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "store": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 517,
+          "requests": [
+            {
+              "body_bytes": 517,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.375,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 918,
+          "requests": [
+            {
+              "body_bytes": 681,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.11,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1199,
+          "requests": [
+            {
+              "body_bytes": 962,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.436,
+          "text": "SEED_0_782 TOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1541,
+          "requests": [
+            {
+              "body_bytes": 597,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.472,
+          "text": "SEED_0_782 TOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "store": false,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 517,
+          "requests": [
+            {
+              "body_bytes": 517,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 1.99,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 918,
+          "requests": [
+            {
+              "body_bytes": 681,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.157,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1199,
+          "requests": [
+            {
+              "body_bytes": 962,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.318,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1542,
+          "requests": [
+            {
+              "body_bytes": 597,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 3.117,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "store": false,
+      "repeat": 2,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 517,
+          "requests": [
+            {
+              "body_bytes": 517,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.274,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 918,
+          "requests": [
+            {
+              "body_bytes": 681,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.343,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1199,
+          "requests": [
+            {
+              "body_bytes": 962,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.852,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1542,
+          "requests": [
+            {
+              "body_bytes": 597,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.518,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "store": true,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 516,
+          "requests": [
+            {
+              "body_bytes": 516,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.073,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 917,
+          "requests": [
+            {
+              "body_bytes": 680,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.307,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1214,
+          "requests": [
+            {
+              "body_bytes": 977,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.295,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1557,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.981,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "store": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 516,
+          "requests": [
+            {
+              "body_bytes": 516,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 1.783,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 919,
+          "requests": [
+            {
+              "body_bytes": 680,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.04,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1200,
+          "requests": [
+            {
+              "body_bytes": 961,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.76,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1545,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.454,
+          "text": "SEED_0_782\nTOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "store": false,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 516,
+          "requests": [
+            {
+              "body_bytes": 516,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.508,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 919,
+          "requests": [
+            {
+              "body_bytes": 680,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 1.928,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1200,
+          "requests": [
+            {
+              "body_bytes": 961,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.443,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1545,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.136,
+          "text": "SEED_1_782\nTOOL_RESULT_1_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "store": false,
+      "repeat": 2,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 516,
+          "requests": [
+            {
+              "body_bytes": 516,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.069,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 919,
+          "requests": [
+            {
+              "body_bytes": 680,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.475,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1200,
+          "requests": [
+            {
+              "body_bytes": 961,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 2.266,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1545,
+          "requests": [
+            {
+              "body_bytes": 596,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.534,
+          "text": "SEED_2_782\nTOOL_RESULT_2_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "store": true,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "anchor-answer",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 515,
+          "requests": [
+            {
+              "body_bytes": 515,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 2.24,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "tool-dispatch",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 918,
+          "requests": [
+            {
+              "body_bytes": 679,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 1.999,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "tool-result",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1199,
+          "requests": [
+            {
+              "body_bytes": 960,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 1.963,
+          "text": "SEED_0_782 TOOL_RESULT_0_593",
+          "tool_calls": 0
+        },
+        {
+          "label": "ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 1543,
+          "requests": [
+            {
+              "body_bytes": 595,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 2.271,
+          "text": "SEED_0_782 TOOL_RESULT_0_593",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "retained_seed": true,
+      "retained_result": true
+    }
+  ],
+  "authentication_failures_before_valid_key": 4,
+  "image_chains": [
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "fixture": "transport",
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "image-anchor",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16400613,
+          "requests": [
+            {
+              "body_bytes": 16400613,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 6.395,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "start-image-tools",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16401164,
+          "requests": [
+            {
+              "body_bytes": 831,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 3.851,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-1",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 18901546,
+          "requests": [
+            {
+              "body_bytes": 2501213,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 4.54,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-2",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 21401928,
+          "requests": [
+            {
+              "body_bytes": 5001595,
+              "input_items": 5,
+              "continued": true
+            }
+          ],
+          "seconds": 4.539,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-3",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23902345,
+          "requests": [
+            {
+              "body_bytes": 7502012,
+              "input_items": 7,
+              "continued": true
+            }
+          ],
+          "seconds": 6.121,
+          "text": "| Page | Page ID | Dose | Rectangle color |\n|---|---|---|---|\n| Earliest | 731842 | 1.25 mg | Blue |\n| Round 1 | 486219 | 0.05 mg | Red |\n| Round 2 | 925673 | 2.75 mg | Green |\n| Round 3 | 364958 | 0.15 mg | Blue |",
+          "tool_calls": 0
+        },
+        {
+          "label": "image-ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23902861,
+          "requests": [
+            {
+              "body_bytes": 580,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 4.951,
+          "text": "Page ID: 731842  \nDose: 1.25 mg",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "initial_body_in_range": true,
+      "exceeded_22mb": true,
+      "visual_checks": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "followup_visual_retained": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "fixture": "transport",
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "image-anchor",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16400612,
+          "requests": [
+            {
+              "body_bytes": 16400612,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 6.28,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "start-image-tools",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16401165,
+          "requests": [
+            {
+              "body_bytes": 830,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 3.556,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-1",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 18901547,
+          "requests": [
+            {
+              "body_bytes": 2501212,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 4.488,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-2",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 21401933,
+          "requests": [
+            {
+              "body_bytes": 5001598,
+              "input_items": 5,
+              "continued": true
+            }
+          ],
+          "seconds": 5.02,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-3",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23902350,
+          "requests": [
+            {
+              "body_bytes": 7502015,
+              "input_items": 7,
+              "continued": true
+            }
+          ],
+          "seconds": 6.003,
+          "text": "| Page | Page ID | Dose | Rectangle color |\n|---|---|---|---|\n| Earliest | 925673 | 2.75 mg | Green |\n| Round 1 | 364958 | 0.15 mg | Blue |\n| Round 2 | 852416 | 3.25 mg | Red |\n| Round 3 | 219785 | 0.25 mg | Green |",
+          "tool_calls": 0
+        },
+        {
+          "label": "image-ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23902869,
+          "requests": [
+            {
+              "body_bytes": 579,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 4.701,
+          "text": "Page ID: 925673  \nDose: 2.75 mg",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "initial_body_in_range": true,
+      "exceeded_22mb": true,
+      "visual_checks": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "followup_visual_retained": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "fixture": "realistic",
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "image-anchor",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16648808,
+          "requests": [
+            {
+              "body_bytes": 16648808,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 7.917,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "start-image-tools",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16649359,
+          "requests": [
+            {
+              "body_bytes": 831,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 5.559,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-1",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 19149741,
+          "requests": [
+            {
+              "body_bytes": 2501213,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 6.416,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-2",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 21650123,
+          "requests": [
+            {
+              "body_bytes": 5001595,
+              "input_items": 5,
+              "continued": true
+            }
+          ],
+          "seconds": 8.162,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-3",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 24150556,
+          "requests": [
+            {
+              "body_bytes": 7502028,
+              "input_items": 7,
+              "continued": true
+            }
+          ],
+          "seconds": 8.302,
+          "text": "| Page source | Page ID | Dose | Rectangle color |\n|---|---|---|---|\n| Earliest page | 731842 | 1.25 mg | Blue |\n| Round 1 | 486219 | 0.05 mg | Red |\n| Round 2 | 925673 | 2.75 mg | Green |\n| Round 3 | 364958 | 0.15 mg | Blue |",
+          "tool_calls": 0
+        },
+        {
+          "label": "image-ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 24151084,
+          "requests": [
+            {
+              "body_bytes": 580,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 5.765,
+          "text": "Page ID: 731842  \nDose: 1.25 mg",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "initial_body_in_range": true,
+      "exceeded_22mb": true,
+      "visual_checks": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "followup_visual_retained": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "fixture": "realistic",
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "image-anchor",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16651431,
+          "requests": [
+            {
+              "body_bytes": 16651431,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 7.084,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "start-image-tools",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16651984,
+          "requests": [
+            {
+              "body_bytes": 830,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 5.469,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-1",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 19152366,
+          "requests": [
+            {
+              "body_bytes": 2501212,
+              "input_items": 3,
+              "continued": true
+            }
+          ],
+          "seconds": 5.898,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-2",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 21652752,
+          "requests": [
+            {
+              "body_bytes": 5001598,
+              "input_items": 5,
+              "continued": true
+            }
+          ],
+          "seconds": 6.887,
+          "text": "",
+          "tool_calls": 1
+        },
+        {
+          "label": "image-tool-result-3",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 24153169,
+          "requests": [
+            {
+              "body_bytes": 7502015,
+              "input_items": 7,
+              "continued": true
+            }
+          ],
+          "seconds": 7.163,
+          "text": "| Page | Page ID | Dose | Rectangle color |\n|---|---|---|---|\n| Earliest page | 925673 | 2.75 mg | Green |\n| Round 1 | 364958 | 0.15 mg | Blue |\n| Round 2 | 852416 | 3.25 mg | Red |\n| Round 3 | 219785 | 0.25 mg | Green |",
+          "tool_calls": 0
+        },
+        {
+          "label": "image-ordinary-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 24153693,
+          "requests": [
+            {
+              "body_bytes": 579,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 6.295,
+          "text": "Page ID: 925673  \nDose: 2.75 mg",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "initial_body_in_range": true,
+      "exceeded_22mb": true,
+      "visual_checks": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "followup_visual_retained": true
+    }
+  ],
+  "parallel_image_chains": [
+    {
+      "strategy": "anchor",
+      "stream": false,
+      "repeat": 0,
+      "checks": [
+        {
+          "label": "parallel-anchor",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16400803,
+          "requests": [
+            {
+              "body_bytes": 16400803,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 5.469,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "parallel-start",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16401332,
+          "requests": [
+            {
+              "body_bytes": 1040,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 4.161,
+          "text": "",
+          "tool_calls": 2
+        },
+        {
+          "label": "parallel-result-1",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 18808279,
+          "requests": [
+            {
+              "body_bytes": 2407987,
+              "input_items": 5,
+              "continued": true
+            }
+          ],
+          "seconds": 4.79,
+          "text": "",
+          "tool_calls": 2
+        },
+        {
+          "label": "parallel-result-2",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 21215074,
+          "requests": [
+            {
+              "body_bytes": 4814782,
+              "input_items": 9,
+              "continued": true
+            }
+          ],
+          "seconds": 5.568,
+          "text": "",
+          "tool_calls": 2
+        },
+        {
+          "label": "parallel-result-3",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23620965,
+          "requests": [
+            {
+              "body_bytes": 7220673,
+              "input_items": 13,
+              "continued": true
+            }
+          ],
+          "seconds": 6.634,
+          "text": "| Page | Page ID | Dose | Rectangle color |\n|---|---|---|---|\n| First original | 731842 | 1.25 mg | Blue |\n| Round 1 \u2014 page_a | 486219 | 0.05 mg | Red |\n| Round 1 \u2014 page_b | 925673 | 2.75 mg | Green |\n| Round 2 \u2014 page_a | 364958 | 0.15 mg | Blue |\n| Round 2 \u2014 page_b | 852416 | 3.25 mg | Red |\n| Round 3 \u2014 page_a | 219785 | 0.25 mg | Green |\n| Round 3 \u2014 page_b | 643197 | 4.50 mg | Blue |",
+          "tool_calls": 0
+        },
+        {
+          "label": "parallel-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23621712,
+          "requests": [
+            {
+              "body_bytes": 853,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 4.863,
+          "text": "- First original: Page ID **731842**, Dose **1.25 mg**\n- Last tool page: Page ID **643197**, Dose **4.50 mg**",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "initial_body_in_range": true,
+      "visual_checks": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "equivalent_exceeds_22mb": true,
+      "no_replays_or_retries": true,
+      "followup_visual_retained": true
+    },
+    {
+      "strategy": "anchor",
+      "stream": true,
+      "repeat": 1,
+      "checks": [
+        {
+          "label": "parallel-anchor",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16648997,
+          "requests": [
+            {
+              "body_bytes": 16648997,
+              "input_items": 1,
+              "continued": false
+            }
+          ],
+          "seconds": 7.261,
+          "text": "ACK",
+          "tool_calls": 0
+        },
+        {
+          "label": "parallel-start",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 16649528,
+          "requests": [
+            {
+              "body_bytes": 1039,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 5.721,
+          "text": "",
+          "tool_calls": 2
+        },
+        {
+          "label": "parallel-result-1",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 19056475,
+          "requests": [
+            {
+              "body_bytes": 2407986,
+              "input_items": 5,
+              "continued": true
+            }
+          ],
+          "seconds": 6.106,
+          "text": "",
+          "tool_calls": 2
+        },
+        {
+          "label": "parallel-result-2",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 21463270,
+          "requests": [
+            {
+              "body_bytes": 4814781,
+              "input_items": 9,
+              "continued": true
+            }
+          ],
+          "seconds": 6.791,
+          "text": "",
+          "tool_calls": 2
+        },
+        {
+          "label": "parallel-result-3",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23869161,
+          "requests": [
+            {
+              "body_bytes": 7220672,
+              "input_items": 13,
+              "continued": true
+            }
+          ],
+          "seconds": 8.585,
+          "text": "| Page | Page ID | Dose | Rectangle color |\n|---|---|---|---|\n| First original | 731842 | 1.25 mg | Blue |\n| Round 1 \u2014 page_a | 486219 | 0.05 mg | Red |\n| Round 1 \u2014 page_b | 925673 | 2.75 mg | Green |\n| Round 2 \u2014 page_a | 364958 | 0.15 mg | Blue |\n| Round 2 \u2014 page_b | 852416 | 3.25 mg | Red |\n| Round 3 \u2014 page_a | 219785 | 0.25 mg | Green |\n| Round 3 \u2014 page_b | 643197 | 4.50 mg | Blue |",
+          "tool_calls": 0
+        },
+        {
+          "label": "parallel-followup",
+          "http_status": 200,
+          "status": "completed",
+          "error": null,
+          "full_body_bytes": 23869910,
+          "requests": [
+            {
+              "body_bytes": 852,
+              "input_items": 1,
+              "continued": true
+            }
+          ],
+          "seconds": 6.557,
+          "text": "- First original: Page ID **731842**, Dose **1.25 mg**\n- Last tool: Page ID **643197**, Dose **4.50 mg**",
+          "tool_calls": 0
+        }
+      ],
+      "passed": true,
+      "initial_body_in_range": true,
+      "visual_checks": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "equivalent_exceeds_22mb": true,
+      "no_replays_or_retries": true,
+      "followup_visual_retained": true
+    }
+  ],
+  "live_clients": [
+    {
+      "client": "codex-cli 0.152.0",
+      "strategy": "anchor",
+      "turns": [
+        "completed",
+        "completed",
+        "completed"
+      ],
+      "image_tool_result_transmitted": true,
+      "shapes": [
+        {
+          "bytes": 67436,
+          "continued": false,
+          "items": 3
+        },
+        {
+          "bytes": 67955,
+          "continued": false,
+          "items": 5
+        },
+        {
+          "bytes": 96991,
+          "continued": false,
+          "items": 7
+        },
+        {
+          "bytes": 97380,
+          "continued": false,
+          "items": 9
+        }
+      ],
+      "stats": {
+        "continuation_requests": 3,
+        "full_replay_requests": 1,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 1,
+        "tool_boundary_replays": 0,
+        "saved_request_bytes": 128272
+      },
+      "errors": [
+        null,
+        null,
+        null
+      ],
+      "passed": true,
+      "live": true,
+      "transmitted": [
+        {
+          "body_bytes": 67436,
+          "input_items": 3,
+          "continued": false
+        },
+        {
+          "body_bytes": 35066,
+          "input_items": 1,
+          "continued": true
+        },
+        {
+          "body_bytes": 64102,
+          "input_items": 3,
+          "continued": true
+        },
+        {
+          "body_bytes": 34886,
+          "input_items": 1,
+          "continued": true
+        }
+      ],
+      "tool_answer": "Page ID: 731842\nDose: 1.25 mg\nRectangle color: Blue",
+      "followup_answer": "Page ID: 731842\nDose: 1.25 mg",
+      "visual_values_received": true,
+      "followup_visual_retained": true,
+      "budget": {
+        "additional_ceiling": 20,
+        "accounted": 3.59955,
+        "remaining": 16.40045,
+        "attempt_reservations": 124,
+        "unknown_reservations": 12
+      }
+    },
+    {
+      "client": "codex-cli 0.167.1",
+      "strategy": "anchor",
+      "turns": [
+        "completed",
+        "completed",
+        "completed"
+      ],
+      "image_tool_result_transmitted": true,
+      "shapes": [
+        {
+          "bytes": 83523,
+          "continued": false,
+          "items": 6
+        },
+        {
+          "bytes": 84059,
+          "continued": false,
+          "items": 8
+        },
+        {
+          "bytes": 113495,
+          "continued": false,
+          "items": 11
+        },
+        {
+          "bytes": 113905,
+          "continued": false,
+          "items": 13
+        }
+      ],
+      "stats": {
+        "continuation_requests": 3,
+        "full_replay_requests": 1,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 1,
+        "tool_boundary_replays": 0,
+        "saved_request_bytes": 205337
+      },
+      "errors": [
+        null,
+        null,
+        null
+      ],
+      "passed": true,
+      "live": true,
+      "transmitted": [
+        {
+          "body_bytes": 83523,
+          "input_items": 6,
+          "continued": false
+        },
+        {
+          "body_bytes": 25622,
+          "input_items": 1,
+          "continued": true
+        },
+        {
+          "body_bytes": 55058,
+          "input_items": 4,
+          "continued": true
+        },
+        {
+          "body_bytes": 25442,
+          "input_items": 1,
+          "continued": true
+        }
+      ],
+      "tool_answer": "I\u2019ll view the image and read the requested details.\n Page ID: 731842  \nDose: 1.25 mg  \nRectangle color: Blue",
+      "followup_answer": "Page ID: 731842  \nDose: 1.25 mg",
+      "visual_values_received": true,
+      "followup_visual_retained": true,
+      "budget": {
+        "additional_ceiling": 20,
+        "accounted": 3.65248,
+        "remaining": 16.34752,
+        "attempt_reservations": 128,
+        "unknown_reservations": 12
+      }
+    }
+  ],
+  "spending": {
+    "additional_ceiling": 20,
+    "accounted": 3.65248,
+    "remaining": 16.34752,
+    "attempt_reservations": 128,
+    "unknown_reservations": 12,
+    "reported_cost": 3.05248,
+    "unresolved_cost_reserved": 0.6,
+    "baseline": {
+      "baseline": 23.795504,
+      "additional_allowance": 20,
+      "prior_records": 217,
+      "unresolved_prior_records": 134
+    }
+  }
+}

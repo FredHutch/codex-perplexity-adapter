@@ -20,11 +20,22 @@ def signature(code):
 root=Path(__file__).resolve().parents[1]
 archive=CArchiveReader(sys.argv[1]);pyz=archive.open_embedded_archive('PYZ.pyz')
 results={}
-for module in ['__init__','app','cli','continuation','request_size','status','transform']:
+for module in ['__init__','app','cli','image_resize','continuation','request_size','status','transform']:
     name='codex_perplexity_adapter'+('.'+module if module!='__init__' else '')
     bundled=pyz.extract(name)
     source=root/'codex_perplexity_adapter'/(module+'.py')
     expected=compile(source.read_bytes(),bundled.co_filename,'exec')
     results[module]=signature(expected)==signature(bundled)
-print(json.dumps({'python':sys.version.split()[0],'modules_match':results}))
-if not all(results.values()):raise SystemExit(1)
+if '--anchor' in sys.argv:
+    bundled=pyz.extract('research.tool_continuation')
+    expected=compile((root/'research/tool_continuation.py').read_bytes(),bundled.co_filename,'exec')
+    results['research.tool_continuation']=signature(expected)==signature(bundled)
+    entry=marshal.loads(archive.extract('anchor_server_entry'))
+    results['anchor_server_entry']=signature(entry)==signature(compile((root/'research/anchor_server_entry.py').read_bytes(),entry.co_filename,'exec'))
+if '--release' in sys.argv:
+    entry=marshal.loads(archive.extract('server_entry'))
+    results['server_entry']=signature(entry)==signature(compile((root/'macos/server_entry.py').read_bytes(),entry.co_filename,'exec'))
+    results['research_excluded']=not any(name.startswith('research') for name in pyz.toc)
+codecs={'Pillow native codec': any(name.startswith('PIL/_imaging.') and name.endswith('.so') for name in archive.toc)}
+print(json.dumps({'python':sys.version.split()[0],'modules_match':results,'codecs':codecs}))
+if not all(results.values()) or not all(codecs.values()):raise SystemExit(1)

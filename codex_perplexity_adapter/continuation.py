@@ -104,9 +104,10 @@ class Gate:
 class ContinuationManager:
     def __init__(self, *, enabled: bool = True, max_chats: int = 128,
                  max_bytes: int = 16 * 1024 * 1024, ttl: float = 3600,
-                 clock: Callable[[], float] = time.monotonic):
+                 clock: Callable[[], float] = time.monotonic, policy: str = "images-unchanged"):
         self.enabled, self.max_chats, self.max_bytes, self.ttl = enabled, max_chats, max_bytes, ttl
         self.clock = clock
+        self.policy = policy
         self.secret = secrets.token_bytes(32)
         self.entries: OrderedDict[bytes, Checkpoint] = OrderedDict()
         self.gates: dict[bytes, Gate] = {}
@@ -163,8 +164,8 @@ class ContinuationManager:
     def fingerprints(self, payload: dict[str, Any]) -> tuple[tuple[bytes, ...], bytes, bytes]:
         items = payload["input"]
         fingerprints = tuple(self.digest(canonical_item(item)) for item in items)
-        config = self.digest({k: v for k, v in payload.items()
-                              if k not in {"input", "stream", "previous_response_id"}})
+        config = self.digest([self.policy, {k: v for k, v in payload.items()
+                              if k not in {"input", "stream", "previous_response_id"}}])
         instructions = self.digest([canonical_item(item) for item in items
                                     if isinstance(item, dict) and item.get("role") in {"developer", "system"}])
         return fingerprints, config, instructions
@@ -176,11 +177,18 @@ class ContinuationManager:
         if (entry and entry.config == config and entry.instructions == instructions
                 and len(items) > len(entry.items) and items[:len(entry.items)] == entry.items):
             suffix = payload["input"][len(entry.items):]
-            if not has_local_tools(suffix):
-                self.entries.move_to_end(key)
-                return {**payload, "previous_response_id": entry.response_id, "input": suffix}
+            self.entries.move_to_end(key)
+            return {**payload, "previous_response_id": entry.response_id, "input": suffix}
         self.invalidate(key)
         return payload
+
+    def accept(self, key, response, fingerprints, output, input_items):
+        # Selection has already validated an existing anchor against the exact
+        # original history and settings. Keep it through successful tool rounds;
+        # never establish a checkpoint from a tool-bearing response.
+        if has_local_tools(output) or outstanding_calls(input_items + output):
+            return
+        self.commit(key, response, fingerprints, output)
 
     def commit(self, key: bytes, response: dict[str, Any], fingerprints: tuple[tuple[bytes, ...], bytes, bytes],
                output: list[Any]) -> None:

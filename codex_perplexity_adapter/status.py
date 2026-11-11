@@ -7,6 +7,7 @@ class BudgetStatus:
         self.latest = 0
         self.warnings = [0, 0, 0]
         self.failures = 0
+        self.image_requests = self.resized_images = self.image_saved_bytes = 0
 
     def snapshot(self):
         return {
@@ -15,6 +16,8 @@ class BudgetStatus:
             "largest_active_request_bytes": max(self.active.values(), default=0),
             "warnings_10mb": self.warnings[0], "warnings_12mb": self.warnings[1],
             "warnings_15mb": self.warnings[2], "size_failures": self.failures,
+            "image_resize_requests": self.image_requests, "resized_images": self.resized_images,
+            "image_saved_request_bytes": self.image_saved_bytes,
         }
 
 
@@ -45,9 +48,9 @@ class StatusMiddleware:
             size = self.status.active.pop(key)
             self.status.latest = size
             lease = state.pop("continuation_lease", None)
+            outcome = state.pop("continuation_outcome", None)
             if lease is not None:
                 manager, session_key = lease
-                outcome = state.pop("continuation_outcome", None)
                 try:
                     if outcome is not None:
                         outcome.finalize(delivered and completed)
@@ -55,4 +58,6 @@ class StatusMiddleware:
                         manager.invalidate(session_key)
                 finally:
                     manager.release(session_key)
+            elif outcome is not None:
+                outcome.finalize(delivered and completed)
 
