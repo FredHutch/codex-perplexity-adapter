@@ -177,11 +177,18 @@ class ContinuationManager:
         if (entry and entry.config == config and entry.instructions == instructions
                 and len(items) > len(entry.items) and items[:len(entry.items)] == entry.items):
             suffix = payload["input"][len(entry.items):]
-            if not has_local_tools(suffix):
-                self.entries.move_to_end(key)
-                return {**payload, "previous_response_id": entry.response_id, "input": suffix}
+            self.entries.move_to_end(key)
+            return {**payload, "previous_response_id": entry.response_id, "input": suffix}
         self.invalidate(key)
         return payload
+
+    def accept(self, key, response, fingerprints, output, input_items):
+        # Selection has already validated an existing anchor against the exact
+        # original history and settings. Keep it through successful tool rounds;
+        # never establish a checkpoint from a tool-bearing response.
+        if has_local_tools(output) or outstanding_calls(input_items + output):
+            return
+        self.commit(key, response, fingerprints, output)
 
     def commit(self, key: bytes, response: dict[str, Any], fingerprints: tuple[tuple[bytes, ...], bytes, bytes],
                output: list[Any]) -> None:

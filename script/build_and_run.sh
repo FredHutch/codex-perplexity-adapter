@@ -1,18 +1,19 @@
 #!/bin/zsh
 set -euo pipefail
 project_dir="${0:A:h:h}"
-app_path="/private/tmp/codex-perplexity-anchor-test3/Codex Perplexity Adapter Anchor Test 3.app"
 mode="${1:-run}"
-# Address only this candidate; preserve the older running Anchor Test.
 if [[ "${mode}" != "--build-only" ]]; then
-  osascript -e 'if application id "com.local.codex-perplexity-adapter.anchor-test3" is running then tell application id "com.local.codex-perplexity-adapter.anchor-test3" to quit' >/dev/null 2>&1 || true
+  osascript -e 'if application id "com.local.codex-perplexity-adapter" is running then tell application id "com.local.codex-perplexity-adapter" to quit' >/dev/null 2>&1 || true
 fi
-"${project_dir}/../../.venv/bin/python" "${project_dir}/research/build_anchor_app.py"
+"${project_dir}/build-macos-app.sh"
+stage_path="$(mktemp -d /private/tmp/adapter-run.XXXXXX)"
+unzip -oq "${project_dir}/dist/Codex-Perplexity-Adapter-macOS-arm64.zip" -d "${stage_path}"
+app_path="${stage_path}/Codex Perplexity Adapter.app"
 case "${mode}" in
   --build-only) ;;
   run) open -n "${app_path}" ;;
-  --verify) open -n "${app_path}"; osascript -e 'application id "com.local.codex-perplexity-adapter.anchor-test3" is running' ;;
+  --verify) open -n "${app_path}"; osascript -e 'application id "com.local.codex-perplexity-adapter" is running' ;;
   --debug) lldb "${app_path}/Contents/MacOS/CodexPerplexityAdapter" ;;
-  --logs|--telemetry) open -n "${app_path}"; tail -F "${HOME}/Library/Logs/Codex Perplexity Adapter Anchor Test 3.log" ;;
+  --logs|--telemetry) open -n "${app_path}"; tail -F "${HOME}/Library/Logs/Codex Perplexity Adapter.log" ;;
   *) print -u2 'usage: script/build_and_run.sh [run|--build-only|--verify|--debug|--logs|--telemetry]'; exit 2 ;;
 esac

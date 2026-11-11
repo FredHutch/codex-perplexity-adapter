@@ -135,8 +135,10 @@ class ContinuationCapture:
     def finalize(self, delivered):
         # Called only after ASGI has delivered the whole response. A cancelled
         # final send must neither establish a checkpoint nor earn savings.
-        if self.key is not None:
-            self.manager.invalidate(self.key)
+        if not delivered or self.invalid or self.pending is None:
+            if self.key is not None:
+                self.manager.invalidate(self.key)
+            return
         if delivered and not self.invalid and self.pending is not None:
             response, output = self.pending
             if self.budget_status is not None and self.image_prepared is not None:
@@ -147,8 +149,8 @@ class ContinuationCapture:
                     self.budget_status.image_saved_bytes += prepared.saved_bytes
             if self.key is not None:
                 self.manager.saved_bytes += self.saved_bytes
-            if self.key is not None and not outstanding_calls(self.input_items + output):
-                self.manager.commit(self.key, response, self.fingerprints, output)
+            if self.key is not None:
+                self.manager.accept(self.key, response, self.fingerprints, output, self.input_items)
 
 
 def _parse_route(value: str) -> ModelRoute:

@@ -27,7 +27,7 @@ class BundleMetadataTests(unittest.TestCase):
         with path.open("rb") as handle:
             info = plistlib.load(handle)
         self.assertEqual(info["CFBundleShortVersionString"], __version__.split("rc")[0])
-        self.assertEqual(info["CFBundleVersion"], "0.1.15.1")
+        self.assertEqual(info["CFBundleVersion"], __version__)
         self.assertEqual(info["SupportedModelAliases"], [route.alias for route in BUILTIN_MODELS])
 
 

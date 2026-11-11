@@ -1,5 +1,7 @@
 # 0.1.15rc1 image-resizing candidate
 
+Historical rc1 report. Superseded for release delivery by [v0.1.15 release verification](VERIFICATION_0.1.15_RELEASE.md); the recorded readability findings still apply.
+
 **Engineering checks pass; readability qualification failed. Do not merge or publish this candidate for precision form review.** It is an opt-in evaluation build, separate from stable v0.1.14. No paid API calls or private forms were used.
 
 ## Behavior

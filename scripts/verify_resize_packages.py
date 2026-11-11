@@ -63,7 +63,7 @@ def run(test_app=None):
         try:
             url = "data:image/jpeg;base64," + base64.b64encode((OUT / "form-original.jpg").read_bytes()).decode()
             for arch in (("arm64",) if test_app else ("arm64", "x86_64")):
-                executable = (test_app if test_app else OUT / "extracted" / arch / "Codex Perplexity Adapter Test.app") / "Contents/Resources/adapter-server"
+                executable = (test_app if test_app else OUT / "extracted" / arch / "Codex Perplexity Adapter.app") / "Contents/Resources/adapter-server"
                 sock = socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
                 env = dict(os.environ, PERPLEXITY_API_KEY="synthetic-package-key", HTTPS_PROXY=f"http://127.0.0.1:{proxy.server_address[1]}", NO_PROXY="127.0.0.1,localhost", SSL_CERT_FILE=str(tmp / "cert.pem"))
                 command = (["arch", "-x86_64"] if arch == "x86_64" else []) + [str(executable), "--port", str(port), "--resize-images-on-limit", "--log-level", "info"]

@@ -1,7 +1,7 @@
 # Tool-continuation research harness
 
-This directory is qualification code, excluded from the Python wheel. No
-production setting enables either experiment. Use one strategy per isolated
+This directory is qualification code, excluded from the Python wheel. Production now uses the qualified earlier-answer behavior. The direct strategy
+remains research-only. Use one strategy per isolated
 process; experiment() patches module globals while active.
 
 Strategies: replay uses current production behavior, direct advances after
@@ -42,5 +42,5 @@ its own reservation. Unknown charges remain reserved. The primary comparison
 leaves resizing disabled and caps output at 512 tokens. Live results append to
 ignored build/tool-continuation/; basic probes skip previously recorded cases.
 
-See [findings](../docs/TOOL_CONTINUATION_RESEARCH.md). Do not ship this injection
-as a production continuation implementation.
+See [findings](../docs/TOOL_CONTINUATION_RESEARCH.md). The production implementation lives in codex_perplexity_adapter/continuation.py;
+release packages do not include this injection.

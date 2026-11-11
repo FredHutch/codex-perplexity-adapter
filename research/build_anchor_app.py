@@ -35,7 +35,7 @@ def build():
     source = source.replace('return [NSBundle.mainBundle.infoDictionary[@"AdapterTestCandidate"] boolValue] ? @"Codex Perplexity Adapter Test" : @"Codex Perplexity Adapter";',
                             'return @"Codex Perplexity Adapter Anchor Test 3";')
     source = source.replace('@"Codex–Perplexity Adapter Test"', '@"Codex–Perplexity Adapter Anchor Test 3"')
-    source = source.replace('Version %@ (test candidate rc1)', 'Version %@ (test build 3; earlier-answer continuation)')
+    source = source.replace('Version %@', 'Version %@ (test build 3; earlier-answer continuation)')
     source = source.replace('[self.window makeFirstResponder:self.keyField];\n}', '''[self.window makeFirstResponder:self.keyField];
     [NSUserDefaults.standardUserDefaults registerDefaults:@{@"ResizeImagesOnLimit": @YES}];
     self.resizeCheckbox.state = [NSUserDefaults.standardUserDefaults boolForKey:@"ResizeImagesOnLimit"] ? NSControlStateValueOn : NSControlStateValueOff;
@@ -47,7 +47,7 @@ def build():
     shutil.copy2(BUILD / 'server-dist/adapter-server', contents / 'Resources/adapter-server')
     shutil.copy2(ORIGINAL / 'build/macos/AppIcon.icns', contents / 'Resources/AppIcon.icns')
     info = plistlib.loads((ROOT / 'macos/Info.plist').read_bytes())
-    info.update(CFBundleIdentifier='com.local.codex-perplexity-adapter.anchor-test3',
+    info.update(AdapterTestCandidate=True, CFBundleIdentifier='com.local.codex-perplexity-adapter.anchor-test3',
                 CFBundleName='Codex Perplexity Adapter Anchor Test 3',
                 CFBundleDisplayName='Codex Perplexity Adapter Anchor Test 3',
                 CFBundleVersion='0.1.15.3', AdapterTestPort=4000, AdapterContinuationStrategy='earlier-answer')

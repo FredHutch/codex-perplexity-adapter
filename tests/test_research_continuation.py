@@ -7,7 +7,7 @@ from unittest.mock import patch
 import httpx
 from PIL import Image
 from fastapi.testclient import TestClient
-from codex_perplexity_adapter.app import Settings
+from codex_perplexity_adapter.app import Settings, create_app
 from codex_perplexity_adapter.continuation import canonical_item
 from codex_perplexity_adapter.transform import transform_request
 from research.tool_continuation import experiment, create_research_app, ResearchManager, ResearchCapture
@@ -42,8 +42,9 @@ class ResearchTests(unittest.TestCase):
     def setup_strategy(self,strategy,resize=False):
         self.provider=PermissiveProvider(self)
         self.provider.allow_tool_references = strategy == 'direct'
-        ctx=experiment(strategy);ctx.__enter__();self.addCleanup(ctx.__exit__,None,None,None)
-        self.app=create_research_app(strategy,Settings(api_key='synthetic',resize_images_on_limit=resize),httpx.MockTransport(self.provider))
+        if strategy != 'production':
+            ctx=experiment(strategy);ctx.__enter__();self.addCleanup(ctx.__exit__,None,None,None)
+        self.app=create_app(Settings(api_key='synthetic',resize_images_on_limit=resize),httpx.MockTransport(self.provider))
         self.client=TestClient(self.app);self.client.__enter__();self.addCleanup(self.client.__exit__,None,None,None)
 
     def send(self,history,stream,tools,**extra):
@@ -59,7 +60,7 @@ class ResearchTests(unittest.TestCase):
         encoded = io.BytesIO()
         Image.new('RGB', (32, 24), (40, 50, 60)).save(encoded, 'JPEG')
         jpeg = 'data:image/jpeg;base64,' + base64.b64encode(encoded.getvalue()).decode()
-        for strategy in ('replay','direct','anchor'):
+        for strategy in ('replay','direct','anchor','production'):
           for stream in (False,True):
            for custom,namespace in ((False,False),(True,True)):
             for anchored in (False,True):
@@ -82,7 +83,7 @@ class ResearchTests(unittest.TestCase):
                history += [{'type':'custom_tool_call_output' if custom else 'function_call_output','call_id':f'call_{round_no}_{i}',
                  'output':[{'type':'input_text','text':f'ROUND_{round_no}_{i}'},{'type':'input_image','image_url':jpeg if i else image((20,30,40),padding=0),'detail':'original'}]} for i in range(2)]
                prior=self.provider.seen[-1].get('previous_response_id')
-               if strategy=='anchor' and anchor:self.assertEqual(prior,anchor)
+               if strategy in ('anchor','production') and anchor:self.assertEqual(prior,anchor)
                if strategy=='direct' and round_no:self.assertIsNotNone(prior)
                if strategy=='replay' and round_no:self.assertIsNone(prior)
               self.provider.output=[answer('FINAL_MARKER')]

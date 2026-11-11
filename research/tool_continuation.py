@@ -14,7 +14,11 @@ class ResearchManager(ContinuationManager):
 
     def select(self, key, payload, fingerprints):
         if self.strategy == 'replay':
-            return super().select(key, payload, fingerprints)
+            selected = super().select(key, payload, fingerprints)
+            if selected is not payload and has_local_tools(selected['input']):
+                self.invalidate(key)
+                return payload
+            return selected
         self.expire()
         entry = self.entries.get(key)
         items, config, instructions = fingerprints

@@ -1,5 +1,7 @@
 # Perplexity tool-continuation qualification
 
+Historical qualification report. The approved earlier-answer approach is now released in v0.1.15; see [release verification](../VERIFICATION_0.1.15_RELEASE.md). The observations and limitations below are preserved.
+
 2026-11-11. Source: a50b5d463d8d6f15b264c1f04862475409d9a898 (0.1.15 test
 candidate), isolated branch codex/test-tool-continuation.
 

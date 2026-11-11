@@ -1,5 +1,6 @@
 """Isolated actual-client image tools against a mock or metered live provider."""
 import argparse
+from contextlib import nullcontext
 import asyncio
 import json
 import os
@@ -11,7 +12,7 @@ import threading
 import time
 import httpx
 import uvicorn
-from codex_perplexity_adapter.app import Settings
+from codex_perplexity_adapter.app import Settings, create_app
 from research.tool_continuation import experiment,create_research_app
 from research.budget import OUT
 from research.fixtures import page
@@ -51,9 +52,9 @@ def run(binary,strategy,live=False):
                     body=('data: '+json.dumps(event)+'\n\n').encode()
                     for k in range(0,len(body),31):yield body[k:k+31]
         return httpx.Response(200,stream=Chunks(),headers={'content-type':'text/event-stream'})
-    with experiment(strategy):
+    with (nullcontext() if strategy == "production" else experiment(strategy)):
         session=Session(strategy,True,False) if live else None
-        app=session.app if live else create_research_app(strategy,Settings(api_key='synthetic',local_token='qualification-token'),httpx.MockTransport(provider))
+        app=session.app if live else create_app(Settings(api_key='synthetic',local_token='qualification-token'),httpx.MockTransport(provider))
         class Bounded:
             async def __call__(self,scope,receive,send):
                 if not live or scope.get('path')!='/v1/responses':

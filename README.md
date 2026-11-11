@@ -44,9 +44,9 @@ Choose `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `
 
 ## Current version
 
-An **experimental 0.1.15 test candidate** adds optional resizing when a request exceeds 19 MB. It is off by default and is **not qualified for form review**: testing found lost decimal punctuation and misread identifiers in small text. The stable download remains v0.1.14. See [candidate verification](VERIFICATION_0.1.15.md).
+**Current version: v0.1.15.** Conversation reuse now carries tool rounds from the latest completed answer. Requests remain limited to 19 MB. The app can resize older JPEG and PNG images when a request is oversized; the saved **Resize images in oversized requests** control is initially enabled.
 
-**Current version: v0.1.14.** Supports requests up to 19 MB and displays the limit in the app. Conversation reuse is automatic. If a chat reaches the request limit, use `/compact` and retry.
+Resizing can make small text, decimal points and identifiers harder to read. Turn it off for precision form review. If a request still exceeds the limit, use /compact and retry.
 
 Perplexity's API reports a **20 MB downstream transport limit** on the route used by this adapter. The adapter's **19 MB limit** leaves roughly 1 MB of headroom below it. This applies to the complete request, including conversation history, tools, and images; model token limits also apply. An individually oversized attachment must be reduced. See the [current release notes](RELEASE_NOTES.md).
 

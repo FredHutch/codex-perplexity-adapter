@@ -20,7 +20,6 @@ from unittest.mock import patch
 from scripts.qualify_app_server import RPC
 from scripts.work_budget_fixtures import many_images
 import base64
-from research.tool_continuation import experiment
 
 OUT = Path(__file__).resolve().parents[1] / "build/qualification-0.1.15"
 
@@ -81,5 +80,4 @@ def run(binary):
         server.should_exit = True; thread.join(timeout=10); guard_patch.stop()
 
 if __name__ == "__main__":
-    with experiment("anchor"):
-        run(str(Path(sys.argv[1]).resolve()))
+    run(str(Path(sys.argv[1]).resolve()))

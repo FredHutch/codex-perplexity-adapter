@@ -32,6 +32,10 @@ if '--anchor' in sys.argv:
     results['research.tool_continuation']=signature(expected)==signature(bundled)
     entry=marshal.loads(archive.extract('anchor_server_entry'))
     results['anchor_server_entry']=signature(entry)==signature(compile((root/'research/anchor_server_entry.py').read_bytes(),entry.co_filename,'exec'))
-codecs={name: name in archive.toc for name in ('PIL/_imaging.cpython-313-darwin.so',)}
+if '--release' in sys.argv:
+    entry=marshal.loads(archive.extract('server_entry'))
+    results['server_entry']=signature(entry)==signature(compile((root/'macos/server_entry.py').read_bytes(),entry.co_filename,'exec'))
+    results['research_excluded']=not any(name.startswith('research') for name in pyz.toc)
+codecs={'Pillow native codec': any(name.startswith('PIL/_imaging.') and name.endswith('.so') for name in archive.toc)}
 print(json.dumps({'python':sys.version.split()[0],'modules_match':results,'codecs':codecs}))
 if not all(results.values()) or not all(codecs.values()):raise SystemExit(1)

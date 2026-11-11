@@ -201,7 +201,7 @@ class ContinuationTests(unittest.TestCase):
         self.send(history)
         self.assertNotIn("previous_response_id", self.provider.seen[-1])
 
-    def test_later_multiple_tool_rounds_replay_then_resume(self):
+    def test_later_multiple_tool_rounds_anchor_then_resume(self):
         for stream in (False, True):
             with self.subTest(stream=stream):
                 history, first = self.first(stream=stream)
@@ -211,11 +211,8 @@ class ContinuationTests(unittest.TestCase):
                     self.provider.output = [{"type": "function_call", "id": call_id, "call_id": call_id,
                                              "name": "inspect", "arguments": "{}"}]
                     dispatched = terminal(self.send(history, stream=stream))
-                    if round_number == 1:
-                        self.assertEqual(self.provider.seen[-1]["previous_response_id"], first["id"])
-                    else:
-                        self.assertNotIn("previous_response_id", self.provider.seen[-1])
-                    self.assertEqual(self.app.state.continuation.snapshot()["continuation_cache_entries"], 0)
+                    self.assertEqual(self.provider.seen[-1]["previous_response_id"], first["id"])
+                    self.assertEqual(self.app.state.continuation.snapshot()["continuation_cache_entries"], 1)
                     history += dispatched["output"] + [{"type": "function_call_output",
                                                        "call_id": call_id, "output": "é result"}]
                 self.provider.output = [answer("Finished")]
@@ -223,8 +220,8 @@ class ContinuationTests(unittest.TestCase):
                 self.provider.failure = (429, {"error": {"code": "rate_limit"}})
                 with patch("codex_perplexity_adapter.app.asyncio.sleep", return_value=None):
                     final = terminal(self.send(history, stream=stream))
-                self.assertEqual(self.app.state.continuation.tool_replays, before + 1)
-                self.assertNotIn("previous_response_id", self.provider.seen[-1])
+                self.assertEqual(self.app.state.continuation.tool_replays, before)
+                self.assertEqual(self.provider.seen[-1]["previous_response_id"], first["id"])
                 self.send(history + final["output"] + [message("Next")], stream=stream)
                 self.assertEqual(self.provider.seen[-1]["previous_response_id"], final["id"])
                 self.assertEqual(len(self.provider.seen[-1]["input"]), 1)
@@ -239,6 +236,7 @@ class ContinuationTests(unittest.TestCase):
         self.assertEqual(result.json()["error"]["code"], "context_length_exceeded")
         self.assertEqual(len(self.provider.seen), before)
         self.assertEqual(self.app.state.continuation.tool_replays, 0)
+        # The failed preflight invalidated the anchor, so the next attempt replays.
         self.send(history)
         self.assertNotIn("previous_response_id", self.provider.seen[-1])
         self.assertEqual(self.app.state.continuation.tool_replays, 1)

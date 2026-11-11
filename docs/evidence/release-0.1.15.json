@@ -1,0 +1,1136 @@
+{
+  "version": "0.1.15",
+  "paid_api_calls": 0,
+  "approved_candidate": "876f3db",
+  "strategy": "earlier-answer",
+  "checks": {
+    "3.10": {
+      "tests": 138,
+      "passed": true
+    },
+    "3.12": {
+      "tests": 138,
+      "passed": true
+    },
+    "3.13": {
+      "tests": 138,
+      "passed": true
+    },
+    "local": {
+      "tests": 138,
+      "passed": true
+    },
+    "intel": {
+      "tests": 138,
+      "passed": true
+    },
+    "launcher-arm64": {
+      "preferences": 3,
+      "passed": true
+    },
+    "launcher-intel": {
+      "preferences": 3,
+      "passed": true
+    }
+  },
+  "notarization": {
+    "arm64": {
+      "id": "cfc072ff-8077-49f9-aca9-d43c2c7df352",
+      "status": "Accepted",
+      "name": "Codex-Perplexity-Adapter-macOS-arm64.zip",
+      "message": "Successfully received submission info",
+      "createdDate": "2026-11-11T20:41:12.394Z"
+    },
+    "intel": {
+      "createdDate": "2026-11-11T20:41:11.723Z",
+      "name": "Codex-Perplexity-Adapter-macOS-x86_64.zip",
+      "id": "c571f926-e378-4d05-b052-6accdfb5e7f7",
+      "status": "Accepted",
+      "message": "Successfully received submission info"
+    }
+  },
+  "embedded_source": {
+    "arm64": {
+      "python": "3.13.14",
+      "modules_match": {
+        "__init__": true,
+        "app": true,
+        "cli": true,
+        "image_resize": true,
+        "continuation": true,
+        "request_size": true,
+        "status": true,
+        "transform": true,
+        "server_entry": true,
+        "research_excluded": true
+      },
+      "codecs": {
+        "Pillow native codec": true
+      }
+    },
+    "intel": {
+      "python": "3.12.13",
+      "modules_match": {
+        "__init__": true,
+        "app": true,
+        "cli": true,
+        "image_resize": true,
+        "continuation": true,
+        "request_size": true,
+        "status": true,
+        "transform": true,
+        "server_entry": true,
+        "research_excluded": true
+      },
+      "codecs": {
+        "Pillow native codec": true
+      }
+    }
+  },
+  "clients": {
+    "installed": {
+      "client": "codex-cli 0.152.0",
+      "requests": [
+        {
+          "bytes": 17933998,
+          "continued": false
+        },
+        {
+          "bytes": 34793,
+          "continued": true
+        }
+      ],
+      "largest_original_body": 21586178,
+      "first": "completed",
+      "followup": "completed",
+      "stats": {
+        "active_requests": 0,
+        "latest_completed_request_bytes": 34793,
+        "largest_active_request_bytes": 0,
+        "warnings_10mb": 0,
+        "warnings_12mb": 0,
+        "warnings_15mb": 1,
+        "size_failures": 0,
+        "image_resize_requests": 1,
+        "resized_images": 33,
+        "image_saved_request_bytes": 3652180,
+        "continuation_requests": 1,
+        "full_replay_requests": 1,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 1,
+        "tool_boundary_replays": 0,
+        "saved_request_bytes": 21551666
+      },
+      "tools": {
+        "client": "codex-cli 0.152.0",
+        "strategy": "production",
+        "turns": [
+          "completed",
+          "completed",
+          "completed"
+        ],
+        "image_tool_result_transmitted": true,
+        "shapes": [
+          {
+            "bytes": 67429,
+            "continued": false,
+            "items": 3
+          },
+          {
+            "bytes": 35024,
+            "continued": true,
+            "items": 1
+          },
+          {
+            "bytes": 63992,
+            "continued": true,
+            "items": 3
+          },
+          {
+            "bytes": 34844,
+            "continued": true,
+            "items": 1
+          }
+        ],
+        "stats": {
+          "continuation_requests": 3,
+          "full_replay_requests": 1,
+          "continuation_fallbacks": 0,
+          "continuation_cache_entries": 1,
+          "tool_boundary_replays": 0,
+          "saved_request_bytes": 128191
+        },
+        "errors": [
+          null,
+          null,
+          null
+        ],
+        "passed": true
+      },
+      "compaction": {
+        "passed": true,
+        "largest_measured_body": 19827864,
+        "after_compaction": "completed"
+      }
+    },
+    "supported": {
+      "client": "codex-cli 0.167.1",
+      "requests": [
+        {
+          "bytes": 17947721,
+          "continued": false
+        },
+        {
+          "bytes": 25369,
+          "continued": true
+        }
+      ],
+      "largest_original_body": 21599901,
+      "first": "completed",
+      "followup": "completed",
+      "stats": {
+        "active_requests": 0,
+        "latest_completed_request_bytes": 25369,
+        "largest_active_request_bytes": 0,
+        "warnings_10mb": 0,
+        "warnings_12mb": 0,
+        "warnings_15mb": 1,
+        "size_failures": 0,
+        "image_resize_requests": 1,
+        "resized_images": 33,
+        "image_saved_request_bytes": 3652180,
+        "continuation_requests": 1,
+        "full_replay_requests": 1,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 1,
+        "tool_boundary_replays": 0,
+        "saved_request_bytes": 21574830
+      },
+      "tools": {
+        "client": "codex-cli 0.167.1",
+        "strategy": "production",
+        "turns": [
+          "completed",
+          "completed",
+          "completed"
+        ],
+        "image_tool_result_transmitted": true,
+        "shapes": [
+          {
+            "bytes": 83521,
+            "continued": false,
+            "items": 6
+          },
+          {
+            "bytes": 25585,
+            "continued": true,
+            "items": 1
+          },
+          {
+            "bytes": 54707,
+            "continued": true,
+            "items": 3
+          },
+          {
+            "bytes": 25405,
+            "continued": true,
+            "items": 1
+          }
+        ],
+        "stats": {
+          "continuation_requests": 3,
+          "full_replay_requests": 1,
+          "continuation_fallbacks": 0,
+          "continuation_cache_entries": 1,
+          "tool_boundary_replays": 0,
+          "saved_request_bytes": 205006
+        },
+        "errors": [
+          null,
+          null,
+          null
+        ],
+        "passed": true
+      },
+      "compaction": {
+        "passed": true,
+        "largest_measured_body": 19840156,
+        "after_compaction": "completed"
+      }
+    }
+  },
+  "packages": [
+    {
+      "arch": "arm64",
+      "mock_tls": true,
+      "requests": [
+        {
+          "bytes": 17993855,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": false
+        },
+        {
+          "bytes": 17993854,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": true
+        }
+      ],
+      "stats": {
+        "active_requests": 0,
+        "latest_completed_request_bytes": 19000055,
+        "largest_active_request_bytes": 0,
+        "warnings_10mb": 0,
+        "warnings_12mb": 0,
+        "warnings_15mb": 2,
+        "size_failures": 2,
+        "image_resize_requests": 2,
+        "resized_images": 26,
+        "image_saved_request_bytes": 9812368,
+        "continuation_requests": 0,
+        "full_replay_requests": 2,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 0,
+        "tool_boundary_replays": 2,
+        "saved_request_bytes": 0
+      }
+    },
+    {
+      "arch": "x86_64",
+      "mock_tls": true,
+      "requests": [
+        {
+          "bytes": 17993855,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": false
+        },
+        {
+          "bytes": 17993854,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": true
+        }
+      ],
+      "stats": {
+        "active_requests": 0,
+        "latest_completed_request_bytes": 19000055,
+        "largest_active_request_bytes": 0,
+        "warnings_10mb": 0,
+        "warnings_12mb": 0,
+        "warnings_15mb": 2,
+        "size_failures": 2,
+        "image_resize_requests": 2,
+        "resized_images": 26,
+        "image_saved_request_bytes": 9812368,
+        "continuation_requests": 0,
+        "full_replay_requests": 2,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 0,
+        "tool_boundary_replays": 2,
+        "saved_request_bytes": 0
+      }
+    }
+  ]
+}

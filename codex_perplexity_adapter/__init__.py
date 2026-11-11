@@ -1,3 +1,3 @@
 """Standalone Codex-to-Perplexity Responses API adapter."""
 
-__version__ = "0.1.15rc1"
+__version__ = "0.1.15"

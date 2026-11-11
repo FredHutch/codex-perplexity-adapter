@@ -1,9 +1,9 @@
-# v0.1.14 — 19 MB request guard
+# v0.1.15 — Image recovery and tool conversation reuse
 
-An unpublished **0.1.15rc1** candidate adds opt-in oversized-image recovery. It remains unqualified because synthetic form readability checks failed. See [candidate notes and evidence](VERIFICATION_0.1.15.md). Stable v0.1.14 and its assets are unchanged.
+- Reuse the latest completed answer during tool rounds, preserving earlier images without resending their payloads. Before an answer exists, full history is sent.
+- Resize older inline JPEG/PNG images only when a selected request exceeds **19 MB**, aiming for **18 MB** with a **1,024-pixel** minimum long edge. The app’s saved resizing control is initially enabled; CLI users opt in with --resize-images-on-limit.
+- Allow **500 million decoded pixels** and **60 seconds of active preparation** per request. Candidates are generated lazily; cancelled work earns no savings. The deadline is soft: native processing already running can finish.
 
-The adapter now accepts complete requests up to **19,000,000 bytes**, increased from 18 MB. The macOS app displays **Limit: 19 MB**. Conversation reuse and tool handling are unchanged.
+**Small-text limitation:** Resizing can lose decimal punctuation or misread identifiers. Disable it for precision form review. Conversation reuse and resizing cannot guarantee that every chat fits Perplexity’s observed 20 MB downstream transport limit or independent model limits. The adapter keeps its 19 MB guard; /compact and retry if needed.
 
-Perplexity's API reports a **20 MB downstream transport limit** on the route used by this adapter. The adapter's **19 MB limit** leaves roughly 1 MB of headroom below it. This applies to the complete request, including conversation history, tools, and images; model token limits also apply. If a chat reaches the request limit, use `/compact` and retry; an individually oversized attachment or tool result must be reduced.
-
-See the [verification report](VERIFICATION_0.1.14.md) for testing details and [GitHub Releases](https://github.com/FredHutch/codex-perplexity-adapter/releases) for previous versions.
+Apple Silicon and Intel apps are Developer ID signed, notarized and stapled. See [release verification](VERIFICATION_0.1.15_RELEASE.md) and [GitHub Releases](https://github.com/FredHutch/codex-perplexity-adapter/releases) for previous versions.

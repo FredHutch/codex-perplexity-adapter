@@ -50,6 +50,7 @@
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [self buildApplicationMenu];
+    [NSUserDefaults.standardUserDefaults registerDefaults:@{@"ResizeImagesOnLimit": @YES}];
     [self buildWindow];
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];
@@ -98,7 +99,7 @@
 
     NSAlert *alert = [[NSAlert alloc] init];
     alert.messageText = @"Codex–Perplexity Adapter";
-    alert.informativeText = [NSString stringWithFormat:@"Version %@ (test candidate rc1)\n\nAvailable model names:\n%@\n\ngpt-5.6 is an alias for gpt-5.6-sol.",
+    alert.informativeText = [NSString stringWithFormat:@"Version %@\n\nAvailable model names:\n%@\n\ngpt-5.6 is an alias for gpt-5.6-sol.",
                              version, [models componentsJoinedByString:@"\n"]];
     alert.alertStyle = NSAlertStyleInformational;
     [alert addButtonWithTitle:@"OK"];
