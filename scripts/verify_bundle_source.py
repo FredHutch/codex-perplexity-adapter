@@ -20,7 +20,7 @@ def signature(code):
 root=Path(__file__).resolve().parents[1]
 archive=CArchiveReader(sys.argv[1]);pyz=archive.open_embedded_archive('PYZ.pyz')
 results={}
-for module in ['__init__','app','cli','continuation','request_size','status','transform']:
+for module in ['__init__','app','cli','image_resize','continuation','request_size','status','transform']:
     name='codex_perplexity_adapter'+('.'+module if module!='__init__' else '')
     bundled=pyz.extract(name)
     source=root/'codex_perplexity_adapter'/(module+'.py')

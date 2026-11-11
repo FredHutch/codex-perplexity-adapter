@@ -82,7 +82,7 @@ class RequestSizeTests(unittest.TestCase):
         for stream in (False, True):
             async def handler(request):
                 self.fail('Oversized request reached upstream')
-            with patch('codex_perplexity_adapter.app.prepare_request_body',
+            with patch('codex_perplexity_adapter.image_resize.prepare_request_body',
                        side_effect=lambda payload, **kwargs: prepare_request_body(payload,budget=1000)):
                 with TestClient(create_app(Settings(api_key='test'),transport=httpx.MockTransport(handler))) as client:
                     r = client.post('/v1/responses',json={'model':'gpt-6.1-sol','input':'x'*2000,'stream':stream},

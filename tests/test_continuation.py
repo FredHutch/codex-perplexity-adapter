@@ -234,7 +234,7 @@ class ContinuationTests(unittest.TestCase):
         call = {"type": "function_call", "call_id": "external", "name": "inspect", "arguments": "{}"}
         history += [call, {"type": "function_call_output", "call_id": "external", "output": "é" * 1000}]
         before = len(self.provider.seen)
-        with patch("codex_perplexity_adapter.app.prepare_request_body", lambda p: prepare_request_body(p, budget=500)):
+        with patch("codex_perplexity_adapter.image_resize.prepare_request_body", lambda p: prepare_request_body(p, budget=500)):
             result = self.send(history)
         self.assertEqual(result.json()["error"]["code"], "context_length_exceeded")
         self.assertEqual(len(self.provider.seen), before)
@@ -348,7 +348,7 @@ class ContinuationTests(unittest.TestCase):
         def guard(body):
             return prepare_request_body(body, budget=selected_size)
         self.provider.failure = (404, {"error": {"param": "previous_response_id", "code": "previous_response_not_found"}})
-        with patch("codex_perplexity_adapter.app.prepare_request_body", guard):
+        with patch("codex_perplexity_adapter.image_resize.prepare_request_body", guard):
             response = self.send(history)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"]["code"], "context_length_exceeded")
@@ -360,7 +360,7 @@ class ContinuationTests(unittest.TestCase):
             selected["previous_response_id"] = "resp_" + str(len(self.provider.seen))
             selected["input"] = history[-1:]
             limit = len(encode_request(selected)) + offset
-            with patch("codex_perplexity_adapter.app.prepare_request_body", lambda b: prepare_request_body(b, budget=limit)):
+            with patch("codex_perplexity_adapter.image_resize.prepare_request_body", lambda b: prepare_request_body(b, budget=limit)):
                 result = self.send(history)
             self.assertEqual(result.status_code, 200 if succeeds else 400)
 

@@ -34,28 +34,30 @@ int main(int argc, const char *argv[]) {
         NSMutableArray *reports = [NSMutableArray array];
         for (NSString *preference in @[@"absent", @"true", @"false"]) {
             NSDictionary *oldPreference = [preference isEqualToString:@"absent"] ? @{} :
-                @{@"ReuseConversationContext": @([preference isEqualToString:@"true"])};
+                @{@"ReuseConversationContext": @([preference isEqualToString:@"true"]), @"ResizeImagesOnLimit": @([preference isEqualToString:@"true"])};
             [NSUserDefaults.standardUserDefaults setVolatileDomain:oldPreference forName:NSArgumentDomain];
             AppDelegate *delegate = [[AppDelegate alloc] init];
             [delegate buildWindow];
             delegate.pidURL = [NSURL fileURLWithPath:@"/private/tmp/launcher-test-unused.pid"];
             NSArray *arguments = [delegate serverArguments];
-            Check([arguments.lastObject isEqualToString:@"auto"], @"Saved preference disabled reuse");
+            Check([arguments containsObject:@"auto"], @"Saved preference disabled reuse");
+            Check([arguments containsObject:@"--resize-images-on-limit"] == [preference isEqualToString:@"true"], @"Resize preference not applied");
             for (NSView *view in delegate.contentStack.arrangedSubviews) {
-                Check(![view isKindOfClass:NSButton.class], @"Unexpected checkbox");
+                if ([view isKindOfClass:NSButton.class]) Check(view == delegate.resizeCheckbox, @"Unexpected checkbox");
             }
             Check(delegate.startButton.keyEquivalent.length == 1 && [delegate.startButton.keyEquivalent characterAtIndex:0] == 13, @"Return shortcut missing");
             CGFloat top = NSMaxY(delegate.window.frame);
             NSMutableArray *states = [NSMutableArray array];
             [states addObject:Inspect(delegate, @"stopped", top)];
             [delegate setRunning:YES];
+            Check(!delegate.resizeCheckbox.enabled, @"Resize control still enabled");
             [states addObject:Inspect(delegate, @"starting", top)];
             [delegate setConnectionStatus:@"● Running at 127.0.0.1:4000" color:NSColor.systemGreenColor];
             NSDictionary *values = @{@"active_requests": @0, @"latest_completed_request_bytes": @8000,
                 @"largest_active_request_bytes": @0, @"warnings_10mb": @0, @"warnings_12mb": @0,
                 @"warnings_15mb": @0, @"size_failures": @0, @"continuation_requests": @12,
                 @"full_replay_requests": @4, @"continuation_fallbacks": @0, @"tool_boundary_replays": @2,
-                @"saved_request_bytes": @12345678};
+                @"saved_request_bytes": @12345678, @"image_resize_requests": @3, @"resized_images": @9, @"image_saved_request_bytes": @5500000};
             [delegate displayBudget:values];
             Check([[[delegate.budgetLabels valueForKey:@"stringValue"] componentsJoinedByString:@" "] containsString:@"Limit: 19 MB"], @"19 MB limit missing");
             [states addObject:Inspect(delegate, @"running", top)];

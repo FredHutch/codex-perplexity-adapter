@@ -12,13 +12,13 @@ entitlements="${project_dir}/macos/entitlements.plist"
 case "${target_arch}" in
   arm64)
     build_dir="${project_dir}/build/macos"
-    final_app="${output_dir}/Codex Perplexity Adapter.app"
-    final_zip="${output_dir}/Codex-Perplexity-Adapter-macOS-arm64.zip"
+    final_app="${output_dir}/Codex Perplexity Adapter Test.app"
+    final_zip="${output_dir}/Codex-Perplexity-Adapter-Test-0.1.15-rc1-macOS-arm64.zip"
     ;;
   x86_64)
     build_dir="${project_dir}/build/macos-x86_64"
-    final_app="${output_dir}/x86_64/Codex Perplexity Adapter.app"
-    final_zip="${output_dir}/Codex-Perplexity-Adapter-macOS-x86_64.zip"
+    final_app="${output_dir}/x86_64/Codex Perplexity Adapter Test.app"
+    final_zip="${output_dir}/Codex-Perplexity-Adapter-Test-0.1.15-rc1-macOS-x86_64.zip"
     ;;
   *)
     print -u2 "Unsupported target architecture: ${target_arch}"
@@ -28,7 +28,7 @@ esac
 
 source_icon="${project_dir}/icon.png"
 stage_dir="$(mktemp -d "/private/tmp/codex-perplexity-${target_arch}.XXXXXX")"
-app_dir="${stage_dir}/Codex Perplexity Adapter.app"
+app_dir="${stage_dir}/Codex Perplexity Adapter Test.app"
 staged_zip="${stage_dir}/${final_zip:t}"
 iconset_dir="${build_dir}/AppIcon.iconset"
 app_icon="${build_dir}/AppIcon.icns"

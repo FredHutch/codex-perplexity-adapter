@@ -38,7 +38,21 @@ On an upstream HTTP 429, the adapter makes up to two additional attempts before 
 
 Perplexity's downstream transport limit applies to the entire request, including instructions, tool definitions, conversation text, tool results, and attachments. The adapter checks the actual UTF-8 JSON body against a 19,000,000-byte budget, leaving roughly 1 MB below the 20 MB downstream limit observed on this route. Oversized requests return `context_length_exceeded` so Codex recognizes the context limit. The same conversion applies when Perplexity reports its downstream limit in an HTTP error or failed streaming response. Other provider errors retain their original behavior.
 
-Streaming size failures use response.failed events so Codex recognizes them during compaction. Use /compact and retry. Text and images are preserved without silent truncation or image quality reduction. An individually oversized attachment, tool definition, or result must be reduced at its source.
+Streaming size failures use response.failed events so Codex recognizes them during compaction. Use /compact and retry. With experimental resizing off, text and images are preserved without silent truncation or image quality reduction. An individually oversized attachment, tool definition, or result must be reduced at its source.
+
+## Experimental oversized-image recovery (0.1.15 candidate)
+
+`--resize-images-on-limit` enables recovery; the test app provides the saved, default-off “Resize images in oversized requests” checkbox. Changes apply after Stop/Start. The candidate uses port **45015**, separate preferences, PID files and logs, and a distinct bundle identifier. Stable v0.1.14 remains on port 4000.
+
+After normalization and continuation selection, bodies at or below 19,000,000 bytes pass unchanged. Larger bodies try inline JPEG/PNG user and tool images in oldest-first occurrence order. Each long edge steps down by 15% to a 1,024-pixel floor, aiming for 18,000,000 bytes. Candidates come from the original pixels with Lanczos; JPEG keeps subsampling at quality 85, PNG keeps its format and transparency. Only smaller encoded candidates are retained. Newer images remain original if earlier changes suffice. If the target cannot be reached, a body within the hard guard is accepted; otherwise the normal compaction error remains. No image or text is removed.
+
+Orientation is applied to pixels; stale orientation/dimension/thumbnail tags are removed. ICC and supported metadata are retained. Remote URLs, other formats, assistant images, embedded text/arguments, malformed/truncated images, animation, CMYK, HDR/MPF and unsupported metadata pass unchanged. Bounds are 32 MiB of base64 per image, 20 million pixels per image, 100 million unique pixels per request, and a 32 MiB request-local candidate memo. One image worker runs per server, including after a waiting request is cancelled. No image cache survives a request.
+
+Checkpoints bind original normalized client history and the resize policy to a completed provider response. Full tool replay and structured prior-reference fallback are prepared independently from original history; transport retries reuse identical bytes. Existing continuation and fallback eligibility is unchanged. Provider transport, model and visual-context limits still apply.
+
+Authenticated numeric counters `image_resize_requests`, `resized_images` (occurrences), and `image_saved_request_bytes` count only the final completed and delivered attempt. “Image saved” is separate from “Saved”, which remains continuation savings before resizing. Failed responses, cancelled delivery, preflight rejection, omitted history and transport retries earn no image credit. Counters reset on restart.
+
+**Readability qualification failed.** Synthetic form OCR lost decimal punctuation and misread identifiers at smaller resolutions. Keep the candidate off for precision form review. The PR and packages are for evaluation, not a stable release.
 
 ## Automatic conversation continuation
 
@@ -54,7 +68,7 @@ If a generated prior reference is specifically rejected as unavailable, incomple
 
 ## Adapter-wide status
 
-`GET /v1/adapter/status` requires a configured bearer token even when ordinary API authentication is disabled. It exposes numeric active-request and byte statistics, threshold counts at 10/12/15 MB, size failures, continuation/replay/fallback counts, `tool_boundary_replays`, cache-entry count, and saved request bytes. Tool replays count transmitted full-history requests containing local tool items once per client request, excluding transport retries and preflight rejections. The macOS window shows continuation activity, tool replays, and savings. These counters reset on restart. Savings compare successfully completed and delivered optimized requests with equivalent full replay; fallback attempts do not count as savings. No session identifiers, fingerprints, response IDs, or content appear in status.
+`GET /v1/adapter/status` requires a configured bearer token even when ordinary API authentication is disabled. It exposes numeric active-request and byte statistics, threshold counts at 10/12/15 MB, size failures, continuation/replay/fallback counts, `tool_boundary_replays`, cache-entry count, and saved request bytes. Tool replays count transmitted full-history requests containing local tool items once per client request, excluding transport retries and preflight rejections. The macOS window shows continuation activity, tool replays, and savings. These counters reset on restart. Continuation savings compare the selected body before resizing with equivalent original full replay; fallback attempts do not count as savings. No session identifiers, fingerprints, response IDs, or content appear in status.
 
 Active request and response buffers remain in memory until completion, cancellation, or failure; secure erasure and protection from OS swap or crash capture are not guaranteed. HTTP/SSE transport is unchanged. There is no WebSocket transport, retrieval endpoint, disk cache, or image-hosting feature.
 

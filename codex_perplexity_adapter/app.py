@@ -17,7 +17,8 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import __version__
 from .continuation import ContinuationManager, has_local_tools, outstanding_calls, prior_response_error
-from .request_size import RequestTooLarge, encode_request, normalize_transport_error, prepare_request_body, warning_level
+from .image_resize import ImageResizer, RESIZE_POLICY
+from .request_size import RequestTooLarge, encode_request, normalize_transport_error, warning_level
 from .status import BudgetStatus, StatusMiddleware
 from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
 
@@ -88,11 +89,12 @@ class Settings:
     local_token: str = "local-adapter-token"
     timeout_seconds: float = 300.0
     continuation: str = "auto"
+    resize_images_on_limit: bool = False
 
 
 class ContinuationCapture:
     """Request-local output capture; the manager retains only its fingerprints."""
-    def __init__(self, manager, key, fingerprints, tools, model):
+    def __init__(self, manager, key, fingerprints, tools, model, budget_status=None):
         self.manager, self.key, self.fingerprints = manager, key, fingerprints
         self.tools, self.model = tools, model
         self.response = None
@@ -101,6 +103,8 @@ class ContinuationCapture:
         self.pending = None
         self.saved_bytes = 0
         self.input_items = []
+        self.budget_status = budget_status
+        self.image_prepared = None
 
     def observe(self, event):
         if event.get("type") == "response.output_item.added":
@@ -131,11 +135,19 @@ class ContinuationCapture:
     def finalize(self, delivered):
         # Called only after ASGI has delivered the whole response. A cancelled
         # final send must neither establish a checkpoint nor earn savings.
-        self.manager.invalidate(self.key)
+        if self.key is not None:
+            self.manager.invalidate(self.key)
         if delivered and not self.invalid and self.pending is not None:
             response, output = self.pending
-            self.manager.saved_bytes += self.saved_bytes
-            if not outstanding_calls(self.input_items + output):
+            if self.budget_status is not None and self.image_prepared is not None:
+                prepared = self.image_prepared
+                if prepared.resized_images:
+                    self.budget_status.image_requests += 1
+                    self.budget_status.resized_images += prepared.resized_images
+                    self.budget_status.image_saved_bytes += prepared.saved_bytes
+            if self.key is not None:
+                self.manager.saved_bytes += self.saved_bytes
+            if self.key is not None and not outstanding_calls(self.input_items + output):
                 self.manager.commit(self.key, response, self.fingerprints, output)
 
 
@@ -682,7 +694,9 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         openapi_url=None,
     )
     budget_status = BudgetStatus()
-    continuation = ContinuationManager(enabled=settings.continuation == "auto")
+    continuation = ContinuationManager(enabled=settings.continuation == "auto",
+        policy=RESIZE_POLICY if settings.resize_images_on_limit else "images-unchanged")
+    image_resizer = ImageResizer(settings.resize_images_on_limit)
     app.state.continuation = continuation
     app.add_middleware(StatusMiddleware, status=budget_status)
 
@@ -749,7 +763,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         payload = _normalize_model_request(payload, route)
         upstream_payload, tool_context = transform_request(payload, route.upstream)
         full_payload = upstream_payload
-        capture = None
+        capture = ContinuationCapture(continuation, None, None, full_payload.get("tools", []), route.upstream, budget_status)
+        request.state.continuation_outcome = capture
         key = continuation.session_key(request.headers.get("session-id"), request.headers.get("thread-id"))
         key = await continuation.acquire(key)
         if key is not None:
@@ -757,7 +772,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             if "previous_response_id" not in full_payload and isinstance(full_payload.get("input"), list):
                 fingerprints = await asyncio.to_thread(continuation.fingerprints, full_payload)
                 upstream_payload = continuation.select(key, full_payload, fingerprints)
-                capture = ContinuationCapture(continuation, key, fingerprints, full_payload.get("tools", []), route.upstream)
+                capture.key, capture.fingerprints = key, fingerprints
                 capture.input_items = full_payload["input"]
                 request.state.continuation_outcome = capture
             else:
@@ -775,7 +790,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             if level:
                 budget_status.warnings[level - 1] += 1
         try:
-            upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload)
+            prepared = await image_resizer.prepare(upstream_payload)
+            upstream_body = prepared.body
         except RequestTooLarge as exc:
             return size_error(exc)
         account(upstream_body)
@@ -825,7 +841,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 continuation.fallbacks += 1
                 upstream_payload = full_payload
                 try:
-                    upstream_body = await asyncio.to_thread(prepare_request_body, full_payload)
+                    prepared = await image_resizer.prepare(full_payload)
+                    upstream_body = prepared.body
                 except RequestTooLarge as exc:
                     await upstream.aclose()
                     await client.aclose()
@@ -837,7 +854,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 upstream = await send(upstream_body)
                 stream_lines = None
             if optimized and upstream.status_code < 400 and capture is not None:
-                capture.saved_bytes = max(0, full_size - len(upstream_body))
+                capture.saved_bytes = max(0, full_size - prepared.original_size)
+            capture.image_prepared = prepared
         except httpx.HTTPError:
             await client.aclose()
             return _error(502, "Could not reach Perplexity", "upstream_error")
