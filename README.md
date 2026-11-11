@@ -4,17 +4,7 @@
 
 # Codex–Perplexity Adapter
 
-A local compatibility service that enables the Codex CLI, Codex app, and compatible IDE extensions to use models available through Perplexity's Agent API. Because Codex and Perplexity use different request, response, streaming, and tool-call formats, an API key alone is insufficient; the adapter translates between them.
-
-```text
-Codex CLI, app, or IDE extension
-        │
-        ▼
-Local adapter on 127.0.0.1:4000
-        │  HTTPS
-        ▼
-Perplexity Agent API
-```
+Use models available through Perplexity's Agent API in the Codex CLI, Codex app, and compatible IDE extensions. The adapter runs locally and translates requests between Codex and Perplexity.
 
 ## Download and setup
 
@@ -22,22 +12,16 @@ Download the appropriate macOS app from the [latest release](https://github.com/
 
 | Mac | Download |
 | --- | --- |
-| Apple Silicon (M1 or newer) | [Codex-Perplexity-Adapter-macOS-arm64.zip](https://github.com/FredHutch/codex-perplexity-adapter/releases/latest/download/Codex-Perplexity-Adapter-macOS-arm64.zip) |
-| Intel | [Codex-Perplexity-Adapter-macOS-x86_64.zip](https://github.com/FredHutch/codex-perplexity-adapter/releases/latest/download/Codex-Perplexity-Adapter-macOS-x86_64.zip) |
+| Apple Silicon (M1 or newer) | [Apple Silicon ZIP](https://github.com/FredHutch/codex-perplexity-adapter/releases/latest/download/Codex-Perplexity-Adapter-macOS-arm64.zip) |
+| Intel | [Intel ZIP](https://github.com/FredHutch/codex-perplexity-adapter/releases/latest/download/Codex-Perplexity-Adapter-macOS-x86_64.zip) |
 
-The apps require macOS 13 or newer. After unzipping, move **Codex Perplexity Adapter.app** to Applications, open it, enter a Perplexity API key, and choose **Start Adapter**. Keep the app open while using Codex.
+Requires macOS 13 or newer. Unzip the app, move **Codex Perplexity Adapter.app** to Applications, and open it. Enter your Perplexity API key and choose **Start Adapter**. Keep the app open while using Codex.
 
-The v0.1.13 apps are signed with an Apple Developer ID, notarized by Apple, and include stapled notarization tickets.
-Choose **About Codex–Perplexity Adapter** from the app menu to see the installed version and its supported model aliases.
-The app always enables automatic conversation reuse. Its window fits the current content, with four compact statistics rows while running.
-
-Press **⌘M** to minimize the window or **⌘H** to hide the app. The adapter continues running; restore it from the Dock.
-
-Use Codex CLI 0.156.0 or newer, or a corresponding current release of the Codex app or IDE extension, for the models listed below.
+The current apps are Developer ID signed, notarized by Apple, and include stapled notarization tickets. Check the installed version in **About Codex–Perplexity Adapter**. Press **⌘M** to minimize or **⌘H** to hide the app; the adapter keeps running.
 
 ## Configure Codex
 
-Modify `~/.codex/config.toml` to include these settings. Keep any unrelated existing settings:
+Use Codex CLI 0.156.0 or newer, or a corresponding current Codex app or IDE extension. Add these settings to `~/.codex/config.toml`, keeping unrelated existing settings:
 
 ```toml
 model = "gpt-6.1-sol"
@@ -52,83 +36,33 @@ experimental_bearer_token = "local-adapter-token"
 stream_idle_timeout_ms = 300000
 ```
 
-Then start Codex using the CLI (`codex`), the Codex app, or a compatible IDE extension. The adapter must remain running while Codex is in use.
+Then start Codex. The adapter must remain running while Codex is in use.
 
-## Adapter v0.1.14
+## Supported models
 
-Version 0.1.14 raises the complete UTF-8 JSON request guard to **19,000,000 bytes** and displays **Limit: 19 MB** in the app. This leaves roughly 1 MB below the 20 MB downstream limit observed on this route. Provider conversion and model context limits can still reject an eligible request. Near-limit JSON, SSE, and tool-result replay checks passed; see [v0.1.14 verification](VERIFICATION_0.1.14.md).
+Choose `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, or `gpt-5.6-luna` using the model setting above. The aliases `gpt-6.1` and `gpt-5.6` select `gpt-6.1-sol` and `gpt-5.6-sol`, respectively.
 
-### Previous continuation qualification
+## Current version
 
-Version 0.1.13 passes the documented qualification checks. Tool loops use full-history replay to avoid the reproduced Perplexity continuation failure; ordinary continuation resumes after a successful tool-free answer. Current CLI, desktop, and client compaction checks pass. Signed, notarized, stapled Apple Silicon and Intel packages are available from the [v0.1.13 release](https://github.com/FredHutch/codex-perplexity-adapter/releases/tag/v0.1.13). See [verification report](VERIFICATION_0.1.13.md).
+**Current version: v0.1.14.** Supports requests up to 19 MB and displays the limit in the app. Conversation reuse is automatic. If a chat reaches the request limit, use `/compact` and retry.
 
-The adapter supports `gpt-6.1-sol`, `gpt-6.1`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.6`. Set the `model` value above to the model you want to use. `gpt-6.1` is an alias for `gpt-6.1-sol`; `gpt-5.6` is an alias for `gpt-5.6-sol`.
+Provider and model limits still apply. An individually oversized attachment must be reduced. See the [current release notes](RELEASE_NOTES.md).
 
-Requests and responses are forwarded by default. The adapter replaces the public model alias with its upstream route, removes Codex-only `client_metadata` that Perplexity rejects, and converts Codex custom tools when needed. Namespaced tools receive unique upstream names, and their namespace is restored on tool calls returned to Codex so it can dispatch them to the right plugin. Desktop tool-result notifications without a call ID are preserved as user-role notification text; paired results retain their call IDs and omit unsupported client namespace/name fields. Standard `metadata` is forwarded. For `openai/gpt-6-astra` and `openai/gpt-6.1-sol`, it changes `none` or `minimal` reasoning effort to `low` and removes `temperature` and `top_p`. Compatibility follows the resolved upstream route, including custom routes, pinned routes, and passthrough. Other routes receive no model-specific normalization. Perplexity validates forwarded fields and model capabilities; its errors are returned to the client.
+## Troubleshooting
 
-Version 0.1.11 fixes compaction retries at the request-size limit by returning streaming context failures in the format Codex recognizes. Affected-conversation compaction was confirmed by the user. It also preserves image content in tool results so Codex can inspect images and retain them in conversation history. Codex's image detail hint `original` is mapped to the supported `high` hint. Requests above the 19 MB adapter budget and Perplexity's downstream 20 MB transport failures return a context-limit error that Codex can recognize. Use `/compact` in affected chats and retry. Text and image content are preserved. See [v0.1.11 release notes](RELEASE_NOTES.md) for verification and limitations.
+- **Codex cannot connect:** Start the adapter and check that Codex uses the configuration above.
+- **Authentication error:** Check your Perplexity API key, then stop and restart the adapter with the correct key.
+- **Request or context limit:** Use `/compact` and retry. Reduce oversized attachments or tool results at their source. Image-heavy chats can reach the limit even with conversation reuse enabled.
+- **Rate or quota limit:** Wait and retry, or check usage and billing in your Perplexity account.
 
-When Codex replays a conversation containing several explicit developer mode instructions, the adapter retains only the latest `<collaboration_mode>` block. This prevents obsolete Plan instructions from competing with a later Default instruction. Other developer instructions, including permissions, stay in place. User messages, assistant replies, and tool results cannot change the mode through this conversion.
+## Data handling
 
-Add or replace routes with repeatable `--model-route ALIAS=UPSTREAM` options. The last occurrence of an alias wins, including over a built-in route:
+Conversation content, images, tool definitions, and tool results are sent to Perplexity over HTTPS. The app keeps your Perplexity API key in memory and does not save it. The adapter listens only on your computer at 127.0.0.1.
 
-```text
-codex-perplexity-adapter \
-  --model-route team-model=preset/team-coding \
-  --model-route gpt-6-sol=openai/gpt-6-sol
-```
+Perplexity retains conversation state for continuation. Setting `store: false` or disabling adapter reuse does **not** disable provider persistence. Submit only data approved for processing by Perplexity under your organization's policies.
 
-`--allow-model-passthrough` forwards unknown, syntactically valid `gpt-*` names as `openai/<name>`. Such names are not shown by `/v1/models`. This option may expose new models with unverified request or tool compatibility, and Perplexity may reject models unavailable to your account. Strict routing is the default.
-
-The legacy options retain single-route behavior. Supplying either option exposes only that route, using `gpt-5.6-sol` or `openai/gpt-5.6-sol` as the default for an omitted side. They cannot be combined with `--model-route`:
-
-```text
-codex-perplexity-adapter \
-  --model-alias team-model \
-  --upstream-model preset/team-coding
-```
-
-On an upstream HTTP 429, the adapter makes up to two additional attempts before returning the error to Codex. It waits 1 then 2 seconds by default, or follows Perplexity's Retry-After header when the requested delay is at most 15 seconds. Longer requested waits return the 429 immediately, including Retry-After, so Codex can handle it. Persistent quota limits still require action on the Perplexity account.
-
-### Request size limits
-
-Perplexity's downstream transport limit applies to the entire request, including instructions, tool definitions, conversation text, tool results, and attachments. The adapter checks the actual UTF-8 JSON body against an 19,000,000-byte budget, leaving roughly 1 MB below the 20 MB downstream limit observed on this route. Oversized requests return `context_length_exceeded` so Codex recognizes the context limit. The same conversion applies when Perplexity reports its downstream limit in an HTTP error or failed streaming response. Other provider errors retain their original behavior.
-
-In 0.1.11, streaming size failures are emitted as `response.failed` events so Codex recognizes them during compaction. Version 0.1.10 returned HTTP errors that some Codex clients treated as generic errors, preventing compaction retries. If a conversation reaches this limit, use `/compact` and retry. The adapter preserves all text and image data; it does not silently truncate tool results, remove messages, or reduce image quality. A single attachment, tool definition, or result that exceeds the budget must be reduced at its source.
-
-## Automatic conversation continuation (0.1.13)
-
-The macOS app always enables automatic conversation reuse with `--continuation auto`. The former **Reuse conversation context** checkbox is removed, and any saved value for that preference is ignored. CLI users retain `--continuation auto|disabled` for troubleshooting; `auto` is the default. Budget notices and the former `--budget-notices` option have been removed. The 19,000,000-byte guard and compaction error conversion remain active.
-
-When both Codex `session-id` and `thread-id` headers are present, the adapter fingerprints the fully normalized history and forwarded settings. An exact match with a completed, tool-free prior response sends only new items with Perplexity's `previous_response_id`, provided the new suffix has no local tool calls or results. Current tools and settings are still sent. Compaction, changed instructions or settings, changed tools or models, and unmatched histories start a fresh chain. Missing headers, restart, expiry, or eviction use full replay. Explicit client-supplied `previous_response_id` and `store: false` are preserved even when automatic continuation is disabled.
-
-A response dispatching local tools invalidates its checkpoint even when its status is `completed`. Tool-result requests and repeated tool rounds send full normalized history, preserving calls, results, images, and order. A successfully delivered answer with no outstanding local tools establishes a new checkpoint, allowing ordinary continuation to resume. No earlier checkpoint carries a tool loop. Tool-heavy conversations can therefore still reach the 19 MB guard and need `/compact`.
-
-Checkpoints contain provider response references, process-keyed HMAC fingerprints, and timestamps, held only in memory. They retain no chat text, images, or tool arguments after requests finish. The cache holds at most 128 chats and 16 MiB of fingerprint state, with 60-minute idle expiry and least-recently-used eviction. Requests within a chat are serialized through response completion; separate chats can run concurrently. Failed, malformed, incomplete, or cancelled responses invalidate checkpoints and earn no saved-byte credit. Checkpoints and savings commit only after successful complete delivery. Top-level streaming provider errors include the failed response envelope Codex expects, preserving original error fields.
-
-If a generated prior reference is specifically rejected as unavailable, incomplete, or unsupported, the adapter invalidates it and tries full replay once before forwarding stream events. The fallback must pass the same byte guard. Unrelated errors, ambiguous connection failures, and errors after stream output begins do not trigger replay. Existing bounded 429 retries remain in place.
-
-The live synthetic image test completed with 21,001,804 bytes of full replay history while its small follow-up transmitted 309 bytes, a 99.9985% reduction. The model retained the earlier marker and image color. No downstream 20 MB failure occurred in this controlled case. Continuation reduces transmitted bytes; this result does not establish that all provider-side expansion or size limits have disappeared. A fresh or fallback replay and a single oversized new item remain subject to the guard. See [verification report](VERIFICATION_0.1.13.md) for client qualification and packaging status.
-
-## Adapter-wide status
-
-`GET /v1/adapter/status` requires a configured bearer token even when ordinary API authentication is disabled. It exposes numeric active-request and byte statistics, threshold counts at 10/12/15 MB, size failures, continuation/replay/fallback counts, `tool_boundary_replays`, cache-entry count, and saved request bytes. Tool replays count transmitted full-history requests containing local tool items once per client request, excluding transport retries and preflight rejections. The macOS window shows continuation activity, tool replays, and savings. These counters reset on restart. Savings compare successfully completed and delivered optimized requests with equivalent full replay; fallback attempts do not count as savings. No session identifiers, fingerprints, response IDs, or content appear in status.
-
-Active request and response buffers remain in memory until completion, cancellation, or failure; secure erasure and protection from OS swap or crash capture are not guaranteed. HTTP/SSE transport is unchanged. There is no WebSocket transport, retrieval endpoint, disk cache, or image-hosting feature.
-
-## Data handling and governance
-
-- **Data forwarded:** The adapter forwards Responses request fields by default. These can include prompts, conversation context, metadata or user identifiers, multimodal content or URLs, tool definitions, tool arguments, and tool results. It does not redact this data. Documented compatibility conversions, model routing, and exact conversation continuation are the intended changes.
-- **External destination:** Requests go to the hard-coded Perplexity Agent API endpoint over HTTPS. Custom routes and model passthrough change the model requested from Perplexity, not the network destination. The adapter contains no analytics or telemetry integrations.
-- **Tool execution:** Codex executes client-side tools, including browser and computer tools. The adapter forwards their definitions, calls, and returned results as conversation data; it does not execute them. Provider-hosted tools, where supported, are handled by Perplexity.
-- **Credentials and local access:** The macOS app keeps the entered Perplexity API key in memory and passes it to its local server process through an environment variable. The server sends it to Perplexity in the authorization header; the app does not save it. The documented local bearer token is a fixed, public default, so other software on the same machine that knows it can call the adapter. CLI users can set a unique token with `ADAPTER_LOCAL_TOKEN` or `--local-token` and use the same value in Codex configuration.
-- **Provider persistence:** [Perplexity documents](https://docs.perplexity.ai/docs/agent-api/conversation-state) that conversation state persists server-side for continuation. `store: false` hides retrieval but does not disable persistence. The CLI's `--continuation disabled` controls adapter reuse; it is not a provider retention opt-out.
-- **Storage and logs:** Memory-only checkpoints are described above. The adapter has no database and does not intentionally log or persist request bodies, response bodies, or tool arguments. Access logging is disabled. The macOS app replaces its operational error log at `~/Library/Logs/Codex Perplexity Adapter.log` each time it starts.
-- **Network boundary:** The service listens only on `127.0.0.1` and has no command-line host option.
-- **Organizational responsibility:** Submit only data approved for processing by Perplexity under your organization's policies, agreements, and retention controls. Review Perplexity's terms for any downstream model-provider processing. The adapter cannot change Perplexity's retention or processing practices.
+For CLI options, request handling, the status API, and detailed data handling, see the [technical reference](docs/REFERENCE.md).
 
 ## License and project status
 
-Released under the [MIT License](LICENSE).
-
-This is an independent, unofficial project. It is not affiliated with, endorsed by, or sponsored by OpenAI or Perplexity. Codex, OpenAI, Perplexity, and related marks belong to their respective owners.
+Released under the [MIT License](LICENSE). This is an independent, unofficial project, unaffiliated with OpenAI or Perplexity.
