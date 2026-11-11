@@ -17,6 +17,8 @@
 
 All **101 tests** pass on Python **3.10.20, 3.12.13, 3.13.14, and local 3.14.6**, plus Intel Python 3.12.13 under Rosetta. Launcher syntax and diff whitespace checks pass.
 
+The clean committed source also passes all 101 tests. GitHub Actions is disabled at repository level; the dispatched matrix remains queued without jobs. The user explicitly chose to keep Actions disabled and release using the verified local checks. No GitHub CI pass is claimed.
+
 Coverage includes stateful provider rejection of tool-bearing response references, exact history reconstruction, first-turn and later tools, parallel/multiple/custom/namespaced rounds, images and reasoning, JSON and incremental SSE, resumed continuation, cancellation and failed final delivery, narrow retries, preserved errors, exact UTF-8 boundaries, compaction/configuration resets, cache lifecycle, concurrency, authentication, desktop notifications, and qualification-ledger concurrency/ceilings.
 
 `macos/tests/LauncherTests.m` exercises old preferences absent/true/false in an isolated volatile defaults domain. Every case selects auto and has no checkbox. Native AppKit layout checks cover stopped, starting, running, large counters, unavailable statistics, stopped again, startup error, and a long diagnostic. Width remains 580 points; bottom margin remains 20 points; the top edge stays fixed; wrapping labels have no line limit or clipped height; the main stack is unambiguous. Content heights are 233 points stopped/starting/unavailable/error, 284 running, 314 with 18-digit counters, and 257 with the long diagnostic. No constraint warnings were emitted.
