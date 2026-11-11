@@ -46,7 +46,7 @@ Choose `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `
 
 **Current version: v0.1.14.** Supports requests up to 19 MB and displays the limit in the app. Conversation reuse is automatic. If a chat reaches the request limit, use `/compact` and retry.
 
-Provider and model limits still apply. An individually oversized attachment must be reduced. See the [current release notes](RELEASE_NOTES.md).
+Perplexity's API reports a **20 MB downstream transport limit** on the route used by this adapter. The adapter's **19 MB limit** leaves roughly 1 MB of headroom below it. This applies to the complete request, including conversation history, tools, and images; model token limits also apply. An individually oversized attachment must be reduced. See the [current release notes](RELEASE_NOTES.md).
 
 ## Troubleshooting
 
