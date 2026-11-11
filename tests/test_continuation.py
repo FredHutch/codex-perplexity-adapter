@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from codex_perplexity_adapter.app import Settings, create_app
 from codex_perplexity_adapter.cli import build_parser
 from codex_perplexity_adapter.continuation import ContinuationManager, canonical_item, prior_response_error
-from codex_perplexity_adapter.request_size import encode_request, prepare_request_body
+from codex_perplexity_adapter.request_size import REQUEST_BUDGET_BYTES, encode_request, prepare_request_body
 from codex_perplexity_adapter.transform import transform_request
 
 HEADERS = {"Authorization": "Bearer local-adapter-token", "session-id": "synthetic-session",
@@ -363,6 +363,36 @@ class ContinuationTests(unittest.TestCase):
             with patch("codex_perplexity_adapter.app.prepare_request_body", lambda b: prepare_request_body(b, budget=limit)):
                 result = self.send(history)
             self.assertEqual(result.status_code, 200 if succeeds else 400)
+
+    def test_production_guard_oversized_continuation_fallback(self):
+        history = [message('x' * (REQUEST_BUDGET_BYTES - 1000))]
+        result = terminal(self.send(history))
+        history += result['output'] + [message('é' * 1000)]
+        self.provider.failure = (404, {'error': {'code': 'previous_response_not_found', 'param': 'previous_response_id'}})
+        response = self.send(history)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error']['code'], 'context_length_exceeded')
+        self.assertEqual(len(self.provider.seen), 2)
+        self.assertIn('previous_response_id', self.provider.seen[-1])
+
+    def test_production_guard_tool_result_full_replay(self):
+        for stream in (False, True):
+            for target in (REQUEST_BUDGET_BYTES, REQUEST_BUDGET_BYTES + 1):
+                history = [message('é☃'),
+                    {'type': 'function_call', 'call_id': 'call_guard', 'name': 'probe', 'arguments': '{}'},
+                    {'type': 'function_call_output', 'call_id': 'call_guard', 'output': 'retained'}]
+                payload = {'model': 'gpt-6.1-sol', 'input': history, 'stream': stream}
+                full, _ = transform_request(payload, 'openai/gpt-6.1-sol')
+                history[0]['content'][0]['text'] += 'x' * (target - len(encode_request(full)))
+                before = len(self.provider.seen)
+                response = self.send(history, stream=stream)
+                if target == REQUEST_BUDGET_BYTES:
+                    self.assertEqual(terminal(response)['status'], 'completed')
+                    self.assertEqual(len(self.provider.seen), before + 1)
+                    self.assertNotIn('previous_response_id', self.provider.seen[-1])
+                else:
+                    self.assertEqual(len(self.provider.seen), before)
+                    self.assertIn('context_length_exceeded', response.text)
 
     def test_invalid_responses_do_not_checkpoint(self):
         for response in ({"status": "completed", "output": []}, {"id": "r", "status": "incomplete", "output": []},

@@ -246,7 +246,7 @@
     NSInteger warnings = [values[@"warnings_10mb"] integerValue] + [values[@"warnings_12mb"] integerValue] + [values[@"warnings_15mb"] integerValue];
     [self setBudgetRows:@[
         [NSString stringWithFormat:@"Active: %@ · Last: %.2f MB · Largest active: %.2f MB", values[@"active_requests"], [values[@"latest_completed_request_bytes"] doubleValue] / 1000000, [values[@"largest_active_request_bytes"] doubleValue] / 1000000],
-        [NSString stringWithFormat:@"Warnings: %ld · Size failures: %@ · Limit: 18 MB", (long)warnings, values[@"size_failures"]],
+        [NSString stringWithFormat:@"Warnings: %ld · Size failures: %@ · Limit: 19 MB", (long)warnings, values[@"size_failures"]],
         [NSString stringWithFormat:@"Continuations: %@ · Replays: %@ · Fallbacks: %@", values[@"continuation_requests"], values[@"full_replay_requests"], values[@"continuation_fallbacks"]],
         [NSString stringWithFormat:@"Tool replays: %@ · Saved: %.2f MB", values[@"tool_boundary_replays"], [values[@"saved_request_bytes"] doubleValue] / 1000000],
     ]];
