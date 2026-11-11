@@ -40,6 +40,7 @@ int main(int argc, const char *argv[]) {
             [delegate buildWindow];
             delegate.pidURL = [NSURL fileURLWithPath:@"/private/tmp/launcher-test-unused.pid"];
             NSArray *arguments = [delegate serverArguments];
+            Check([arguments[1] isEqualToString:@"4000"], @"Expected regular port 4000");
             Check([arguments containsObject:@"auto"], @"Saved preference disabled reuse");
             Check([arguments containsObject:@"--resize-images-on-limit"] == [preference isEqualToString:@"true"], @"Resize preference not applied");
             for (NSView *view in delegate.contentStack.arrangedSubviews) {

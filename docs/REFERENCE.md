@@ -42,7 +42,7 @@ Streaming size failures use response.failed events so Codex recognizes them duri
 
 ## Experimental oversized-image recovery (0.1.15 candidate)
 
-`--resize-images-on-limit` enables recovery; the test app provides the saved, default-off “Resize images in oversized requests” checkbox. Changes apply after Stop/Start. The candidate uses port **45015**, separate preferences, PID files and logs, and a distinct bundle identifier. Stable v0.1.14 remains on port 4000.
+`--resize-images-on-limit` enables recovery; the test app provides the saved, default-off “Resize images in oversized requests” checkbox. Changes apply after Stop/Start. The candidate uses the regular port **4000**, separate preferences, PID files and logs, and a distinct bundle identifier. Stop any other adapter using port 4000 before starting the candidate.
 
 After normalization and continuation selection, bodies at or below 19,000,000 bytes pass unchanged. Larger bodies try inline JPEG/PNG user and tool images in oldest-first occurrence order. Each long edge steps down by 15% to a 1,024-pixel floor, aiming for 18,000,000 bytes. Candidates come from the original pixels with Lanczos; JPEG keeps subsampling at quality 85, PNG keeps its format and transparency. Only smaller encoded candidates are retained. Newer images remain original if earlier changes suffice. If the target cannot be reached, a body within the hard guard is accepted; otherwise the normal compaction error remains. No image or text is removed.
 

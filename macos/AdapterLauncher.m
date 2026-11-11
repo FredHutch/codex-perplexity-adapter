@@ -40,7 +40,7 @@
 @implementation AppDelegate
 
 - (NSInteger)serverPort {
-    return [NSBundle.mainBundle.infoDictionary[@"AdapterTestCandidate"] boolValue] ? 45015 : 4000;
+    return 4000;
 }
 
 - (NSString *)stateName {

@@ -39,15 +39,15 @@ Reproduction helpers: `scripts/qualify_resize.py`, `scripts/vision_ocr.swift`, `
 
 ## Test distribution
 
-The candidates have distinct app name/bundle ID, port **45015**, preferences, PID directory and log name. Stable v0.1.14 stays on 4000. Use an isolated Codex configuration pointed at `http://127.0.0.1:45015/v1`; do not replace your existing provider settings merely to inspect the candidate. Resizing starts off. Enable the checkbox before starting to evaluate synthetic images.
+The candidates have distinct app name/bundle ID, preferences, PID directory and log name, and use the regular port **4000**. Stop any other adapter using port 4000 before starting the candidate; existing Codex provider settings can continue using `http://127.0.0.1:4000/v1`. Resizing starts off. Enable the checkbox before starting to evaluate synthetic images.
 
 Both extracted architecture servers match all eight adapter source modules, including `image_resize`, and contain the Pillow JPEG/PNG codecs. Tests run actual packaged binaries through an authenticated temporary loopback TLS proxy that accepts only the expected mock destination, synthetic key and request path. JSON and SSE image recovery, authenticated numeric counters, rejected unauthenticated status and oversized non-image rejection pass. No request reaches Perplexity. Intel execution is under Rosetta, not physical Intel hardware.
 
-Both final ZIPs pass extracted strict deep signature verification, stapled-ticket validation and Gatekeeper assessment as **Notarized Developer ID**. Apple accepted submissions `ca5ea9aa-39a3-4931-8128-c570526cd925` (Apple Silicon) and `a33a9ce9-7469-41c5-9ce1-ee73c6bf2635` (Intel). Clean temporary staging avoids Finder metadata added by the Desktop workspace.
+Both final ZIPs pass extracted strict deep signature verification, stapled-ticket validation and Gatekeeper assessment as **Notarized Developer ID**. Apple accepted submissions `0b7ee460-4218-4b98-a67d-c5ebb6182593` (Apple Silicon) and `06aba3e9-27a1-4f38-bc6f-d152f4d30e5d` (Intel). Clean temporary staging avoids Finder metadata added by the Desktop workspace.
 
 | Candidate ZIP | SHA-256 |
 | --- | --- |
-| `Codex-Perplexity-Adapter-Test-0.1.15-rc1-macOS-arm64.zip` | `c947bb9a781ef87f7f00cc303c6759f58aa2e4cae5330468a53b0c01a3f2f516` |
-| `Codex-Perplexity-Adapter-Test-0.1.15-rc1-macOS-x86_64.zip` | `861856c11e64a86a99e39f4db0731faa6c19462999e4f6494d12d7e6f9bc2de4` |
+| `Codex-Perplexity-Adapter-Test-0.1.15-rc1-macOS-arm64.zip` | `8df28047beb40758c10da686f46a02bdd684a394b06e29a96bd2bfcf0847537e` |
+| `Codex-Perplexity-Adapter-Test-0.1.15-rc1-macOS-x86_64.zip` | `7525d46f48e3aec5f90a3e7a28462b1a5112678f9c077d35a934315e0f5dab12` |
 
 Signing/notarization establish distribution integrity, not image readability. GitHub Actions remains disabled. The PR remains unmerged and no release or tag is created. Installed/running apps are untouched.
