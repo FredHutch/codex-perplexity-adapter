@@ -7,7 +7,7 @@ import re
 from typing import Any
 
 # Leave headroom for the provider's downstream request conversion.
-REQUEST_BUDGET_BYTES = 18_000_000
+REQUEST_BUDGET_BYTES = 19_000_000
 _TRANSPORT_LIMIT = re.compile(
     r"request size \d+ bytes exceeds the 20 MB downstream transport limit", re.IGNORECASE
 )

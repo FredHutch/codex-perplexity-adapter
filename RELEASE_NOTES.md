@@ -1,3 +1,11 @@
+# v0.1.14 — 19 MB request guard
+
+Raise the complete serialized UTF-8 request budget from 18,000,000 to 19,000,000 bytes. Bodies exactly at the limit are accepted locally; larger bodies retain the compaction-recognizable JSON/SSE error. The app displays “Limit: 19 MB”. Continuation, tool replay, content preservation, and CLI controls are unchanged.
+
+This leaves roughly 1 MB below the 20 MB downstream limit observed on the existing route. Provider conversion and model context limits still apply. Synthetic JSON, SSE, and tool-result replay requests of 18,987,086–18,987,613 bytes completed on the existing Perplexity route. These valid 32×32 PNGs contain large ancillary chunks to exercise transport bytes; they do not qualify large visual-context workloads.
+
+All 104 tests pass on Python 3.10, 3.12, 3.13, local 3.14, and Intel 3.12 under Rosetta. A real Codex client recognized a 19,840,156-byte rejection, compacted, and continued with its marker retained. See [verification](VERIFICATION_0.1.14.md). GitHub Actions remains disabled; release acceptance uses local checks.
+
 # v0.1.13
 
 Fix Perplexity continuation failures by replaying full normalized history during local tool loops. A response dispatching standard, custom, or namespaced tools invalidates its checkpoint. A successful delivered answer with no outstanding tool calls establishes a new checkpoint, allowing ordinary continuation to resume. Explicit continuation, store: false, exact history checks, cache bounds, and the 18 MB guard remain active. Tool replay does not remove the provider cap.

@@ -8,13 +8,50 @@ from fastapi.testclient import TestClient
 
 from codex_perplexity_adapter.app import Settings, create_app
 from codex_perplexity_adapter.request_size import (
-    RequestTooLarge, encode_request, normalize_transport_error, prepare_request_body,
+    REQUEST_BUDGET_BYTES, RequestTooLarge, encode_request, normalize_transport_error, prepare_request_body,
 )
 
 LIMIT_MESSAGE = 'request size 22070288 bytes exceeds the 20 MB downstream transport limit'
 
 
 class RequestSizeTests(unittest.TestCase):
+    def test_production_boundaries_after_normalization_json_and_sse(self):
+        from codex_perplexity_adapter.transform import transform_request
+        self.assertEqual(REQUEST_BUDGET_BYTES, 19_000_000)
+        for stream in (False, True):
+            for target in (18_000_001, 18_999_999, 19_000_000, 19_000_001):
+                with self.subTest(stream=stream, bytes=target):
+                    payload = {'model': 'gpt-6.1-sol', 'input': 'é☃', 'stream': stream,
+                               'instructions': 'Include instructions', 'metadata': {'note': 'UTF-8'}}
+                    full, _ = transform_request(payload, 'openai/gpt-6.1-sol')
+                    payload['input'] += 'x' * (target - len(encode_request(full)))
+                    expected, _ = transform_request(payload, 'openai/gpt-6.1-sol')
+                    expected_body = encode_request(expected)
+                    self.assertEqual(len(expected_body), target)
+                    seen = []
+                    async def handler(request):
+                        seen.append(len(request.content))
+                        self.assertEqual(request.content, expected_body)
+                        response = {'id': 'resp_boundary', 'status': 'completed', 'output': []}
+                        if stream:
+                            return httpx.Response(200, text='data: ' + json.dumps(
+                                {'type': 'response.completed', 'response': response}) + chr(10)*2,
+                                headers={'content-type': 'text/event-stream'})
+                        return httpx.Response(200, json=response)
+                    with TestClient(create_app(Settings(api_key='unused'), transport=httpx.MockTransport(handler))) as client:
+                        response = client.post('/v1/responses', json=payload,
+                            headers={'Authorization': 'Bearer local-adapter-token'})
+                    if target <= REQUEST_BUDGET_BYTES:
+                        self.assertEqual(response.status_code, 200)
+                        self.assertEqual(seen, [target])
+                        self.assertNotIn('context_length_exceeded', response.text)
+                    else:
+                        self.assertEqual(seen, [])
+                        self.assertEqual(response.status_code, 200 if stream else 400)
+                        self.assertIn('context_length_exceeded', response.text)
+                        if stream:
+                            self.assertIn('response.failed', response.text)
+
     def test_complete_utf8_size_and_exact_boundary(self):
         for field in ('input', 'instructions', 'tools', 'metadata'):
             with self.subTest(field=field):

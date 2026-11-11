@@ -57,6 +57,7 @@ int main(int argc, const char *argv[]) {
                 @"full_replay_requests": @4, @"continuation_fallbacks": @0, @"tool_boundary_replays": @2,
                 @"saved_request_bytes": @12345678};
             [delegate displayBudget:values];
+            Check([[[delegate.budgetLabels valueForKey:@"stringValue"] componentsJoinedByString:@" "] containsString:@"Limit: 19 MB"], @"19 MB limit missing");
             [states addObject:Inspect(delegate, @"running", top)];
             Check(NSWidth(delegate.statusLabel.frame) > 300, @"Status did not fill the remaining row width");
             Check(NSHeight(delegate.statusLabel.frame) < 25, @"Ordinary running status wrapped unnecessarily");
