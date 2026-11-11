@@ -31,9 +31,28 @@ class StatusMiddleware:
         self.status.active[key] = 0
         state = scope.setdefault("state", {})
         state["budget_request_id"] = key
+        delivered = False
+        completed = False
+        async def track_delivery(message):
+            nonlocal delivered
+            await send(message)
+            if message["type"] == "http.response.body" and not message.get("more_body", False):
+                delivered = True
         try:
-            await self.app(scope, receive, send)
+            await self.app(scope, receive, track_delivery)
+            completed = True
         finally:
             size = self.status.active.pop(key)
             self.status.latest = size
+            lease = state.pop("continuation_lease", None)
+            if lease is not None:
+                manager, session_key = lease
+                outcome = state.pop("continuation_outcome", None)
+                try:
+                    if outcome is not None:
+                        outcome.finalize(delivered and completed)
+                    else:
+                        manager.invalidate(session_key)
+                finally:
+                    manager.release(session_key)
 

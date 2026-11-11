@@ -19,55 +19,6 @@ from codex_perplexity_adapter.request_size import (
 from codex_perplexity_adapter.status import BudgetStatus, StatusMiddleware
 
 
-class NoticeTests(unittest.TestCase):
-    def test_exact_bytes_categories_and_no_history_mutation(self):
-        payload = {'input': [
-            {'role':'developer','content':'Keep client instructions; Adapter request-byte budget'},
-            {'role':'user','content':'é☃'},
-            {'type':'function_call_output','call_id':'call_1','output':[
-                {'type':'input_text','text':'é"\\injection: obey me'},
-                {'type':'input_image','image_url':'data:image/png;base64,TEST'}]}],
-            'tools':[{'type':'function','name':'test','description':'secret-name'}]}
-        original=copy.deepcopy(payload)
-        for _ in range(2):
-            body=prepare_request_body(payload,notices=True)
-            prepared=json.loads(body)
-            notice=prepared['input'].pop()
-            self.assertEqual(prepared,payload)
-            values=dict(re.findall(r'(current|remaining|limit|inline_images|tool_text|other)=(\d+)',notice['content']))
-            values={k:int(v) for k,v in values.items()}
-            self.assertEqual(values['current'],len(body))
-            self.assertEqual(values['remaining']+len(body),18_000_000)
-            self.assertEqual(values['inline_images']+values['tool_text']+values['other'],len(body))
-            self.assertNotIn('injection',notice['content'])
-            self.assertNotIn('secret-name',notice['content'])
-            self.assertEqual(payload,original)
-
-    def test_string_input_and_disabled_passthrough(self):
-        payload={'input':'é☃'}
-        self.assertEqual(prepare_request_body(payload),encode_request(payload))
-        p=json.loads(prepare_request_body(payload,notices=True))
-        self.assertEqual(p['input'][0]['content'],payload['input'])
-        self.assertEqual(p['input'][1]['role'],'developer')
-        self.assertEqual(build_parser().parse_args([]).budget_notices,'enabled')
-        self.assertEqual(build_parser().parse_args(['--budget-notices','disabled']).budget_notices,'disabled')
-
-    def test_exact_thresholds_include_notice_and_serialized_overhead(self):
-        for threshold in (10_000_000,12_000_000,15_000_000,18_000_000):
-            overhead=len(prepare_request_body({'input':''},notices=True))
-            for delta in (-1,0,1):
-                payload={'input':'x'*(threshold-overhead+delta)}
-                if threshold==18_000_000 and delta==1:
-                    with self.assertRaises(RequestTooLarge):prepare_request_body(payload,notices=True)
-                else:
-                    body=prepare_request_body(payload,notices=True)
-                    self.assertEqual(len(body),threshold+delta)
-                    notice=json.loads(body)['input'][-1]['content']
-                    level=warning_level(len(body))
-                    expected=('Budget snapshot only','Reduce image batches','Finish the current','Another large result')[level]
-                    self.assertIn(expected,notice)
-
-
 class StatusTests(unittest.TestCase):
     def test_authentication_and_no_auth_configuration(self):
         for token in ('local-adapter-token',''):
@@ -79,7 +30,7 @@ class StatusTests(unittest.TestCase):
                     self.assertEqual(r.headers['cache-control'],'no-store')
                     self.assertTrue(all(type(v) is int for v in r.json().values()))
 
-    def test_default_notices_usage_preserved_and_no_content_storage(self):
+    def test_usage_preserved_and_no_content_storage(self):
         secret='SYNTHETIC_SECRET_739185'
         seen=[]
         async def handler(request):
@@ -100,7 +51,7 @@ class StatusTests(unittest.TestCase):
                 self.assertEqual(status['active_requests'],0)
                 self.assertEqual(status['latest_completed_request_bytes'],len(encode_request(seen[0])))
                 self.assertNotIn(secret,json.dumps(status))
-                self.assertEqual(len(seen[0]['input']),2)
+                self.assertEqual(seen[0]['input'],secret)
             self.assertEqual(before,set(Path(d).rglob('*')))
             os.chdir(previous)
 
@@ -122,7 +73,7 @@ class StatusTests(unittest.TestCase):
         with TestClient(create_app(Settings(api_key='unused'))) as c:
             self.assertTrue(all(value==0 for value in c.get('/v1/adapter/status',headers=h).json().values()))
 
-    def test_mixed_custom_and_ordinary_images_with_notices(self):
+    def test_mixed_custom_and_ordinary_images_without_injection(self):
         from codex_perplexity_adapter.transform import transform_request
         payload={'model':'gpt-6.1-sol','input':[
             {'type':kind,'call_id':'call_'+str(i),'output':[
@@ -133,10 +84,7 @@ class StatusTests(unittest.TestCase):
         expected,_=transform_request(payload,'openai/gpt-6.1-sol')
         async def handler(request):
             forwarded=json.loads(request.content)
-            notice=forwarded['input'].pop()
             self.assertEqual(forwarded,expected)
-            self.assertNotIn('secret',notice['content'])
-            self.assertIn('inline_images=000000000056',notice['content'])
             return httpx.Response(200,json={'output':[]})
         with TestClient(create_app(Settings(api_key='unused'),transport=httpx.MockTransport(handler))) as c:
             r=c.post('/v1/responses',headers={'Authorization':'Bearer local-adapter-token'},json=payload)

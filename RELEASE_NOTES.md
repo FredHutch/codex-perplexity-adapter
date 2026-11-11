@@ -1,6 +1,28 @@
+# v0.1.13
+
+Fix Perplexity continuation failures by replaying full normalized history during local tool loops. A response dispatching standard, custom, or namespaced tools invalidates its checkpoint. A successful delivered answer with no outstanding tool calls establishes a new checkpoint, allowing ordinary continuation to resume. Explicit continuation, store: false, exact history checks, cache bounds, and the 18 MB guard remain active. Tool replay does not remove the provider cap.
+
+The macOS app always enables automatic conversation reuse. The checkbox is removed, and an old saved off preference no longer affects startup. CLI users retain `--continuation auto|disabled` for troubleshooting. Provider retention is unchanged: `store: false` and disabling adapter reuse do not disable Perplexity's server-side persistence.
+
+The 580-point-wide AppKit window now fits its content with 20-point outer margins and 10-point vertical spacing. Four wrapping, 12-point statistics rows show every counter. Status changes resize the window while preserving its top edge. The normal stopped content is 233 points high and the running content is 284, replacing the fixed 425-point height.
+
+The app and authenticated status show tool replay counts. Checkpoints and byte savings commit only after successful completion and delivery. Failed, incomplete, malformed, and cancelled responses invalidate state. Top-level provider stream failures retain provider fields inside Codex's expected failed-response envelope. Injected budget notices are removed.
+
+Fresh desktop chats can contain a namespaced tool notification without a call ID. Preserve its content as user-role text, and remove unsupported namespace/name fields from paired tool results while retaining call IDs. This fixes the additional HTTP 400 discovered during desktop qualification.
+
+All **101 tests** pass on Python 3.10.20, 3.12.13, 3.13.14, local 3.14.6, and Intel Python 3.12.13 under Rosetta. Installed CLI 0.152.0 and current CLI 0.167.1 pass isolated mock tool loops. Current CLI 0.167.1 and the desktop backend 0.167.0-alpha.3.2 also complete live tool loops. Dedicated current-client and desktop-backend tests prove ordinary continuation after tools, manual compaction, and recovery with the retained result. A separate real desktop chat completes its tool round and follow-up; its successful HTTP traffic is attributed in client logs. A real client recognizes an accumulated-history rejection at the actual 18 MB guard and recovers after manual compaction using a local mock provider. The controlled live image-history follow-up saves 99.9985% of request bytes.
+
+Native launcher tests verify saved preference absent/true/false, stopped/starting/running/error/unavailable states, large counters, wrapped diagnostics, preserved window top, and 20-point bottom margins. A separate GUI preview verifies the stopped and running layouts, paste, Return, Tab, Stop, and minimize controls without starting a provider connection.
+
+Both macOS packages are rebuilt from the final launcher source, Developer ID signed, notarized, and stapled. Fresh final ZIP extractions pass strict nested signatures, embedded-source and architecture checks, ticket validation, Gatekeeper acceptance, startup, authenticated status, and JSON/SSE size errors. Intel execution was checked under Rosetta. Submission IDs and current package hashes are recorded in the [verification report](VERIFICATION_0.1.13.md).
+
+Qualification accounting is **$23.644674**, below the renewed **$24.883652** ceiling. This includes unknown charges and unused retry reservations, rather than confirmed billing. The launcher changes required no additional paid calls. See [verification report](VERIFICATION_0.1.13.md) for the cost audit, evidence, and limitations. The installed app remains untouched.
+
+---
+
 # v0.1.12
 
-Add stateless request-byte notices and authenticated adapter-wide numeric status, shown in the macOS app. Exact UTF-8 measurement includes all forwarded fields and notice overhead. Warnings at 10, 12, and 15 decimal MB guide batch sizes and compaction; the 18 MB guard and 0.1.11 streaming compaction recovery remain authoritative. Disable notices with `--budget-notices disabled` without disabling recovery.
+Add stateless request-byte notices and authenticated adapter-wide numeric status, shown in the macOS app. Exact UTF-8 measurement includes all forwarded fields and notice overhead. Warnings at 10, 12, and 15 decimal MB guide batch sizes and compaction; the 18 MB guard and 0.1.11 streaming compaction recovery remain authoritative. This historical notice feature is removed in 0.1.13.
 
 No content store, archive, retained content cache, summaries, retrieval interface, image upload, or additional provider calls are introduced. Status retains only numerical operational counters in process memory. Notices never include client-derived text and do not alter client history. Request buffers are scoped to active requests, without a promise of secure erasure or protection from OS swap/crash capture.
 

@@ -16,7 +16,8 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import __version__
-from .request_size import RequestTooLarge, normalize_transport_error, prepare_request_body, warning_level
+from .continuation import ContinuationManager, has_local_tools, outstanding_calls, prior_response_error
+from .request_size import RequestTooLarge, encode_request, normalize_transport_error, prepare_request_body, warning_level
 from .status import BudgetStatus, StatusMiddleware
 from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
 
@@ -86,7 +87,56 @@ class Settings:
     allow_model_passthrough: bool = False
     local_token: str = "local-adapter-token"
     timeout_seconds: float = 300.0
-    budget_notices: bool = True
+    continuation: str = "auto"
+
+
+class ContinuationCapture:
+    """Request-local output capture; the manager retains only its fingerprints."""
+    def __init__(self, manager, key, fingerprints, tools, model):
+        self.manager, self.key, self.fingerprints = manager, key, fingerprints
+        self.tools, self.model = tools, model
+        self.response = None
+        self.invalid = False
+        self.started_items = set()
+        self.pending = None
+        self.saved_bytes = 0
+        self.input_items = []
+
+    def observe(self, event):
+        if event.get("type") == "response.output_item.added":
+            item = event.get("item")
+            if isinstance(item, dict) and isinstance(item.get("id"), str):
+                self.started_items.add(item["id"])
+        if event.get("type") in {"response.failed", "response.incomplete", "error"}:
+            self.invalid = True
+        if event.get("type") == "response.completed":
+            if self.response is not None:
+                self.invalid = True
+            self.response = event.get("response")
+            if isinstance(self.response, dict) and isinstance(self.response.get("output"), list):
+                terminal_ids = {item.get("id") for item in self.response["output"] if isinstance(item, dict)}
+                if not self.started_items <= terminal_ids:
+                    self.invalid = True
+
+    def commit(self, response=None):
+        response = self.response if response is None else response
+        if self.invalid or not isinstance(response, dict) or not isinstance(response.get("output"), list):
+            return
+        output, _ = transform_request({"input": response["output"], "tools": self.tools}, self.model)
+        response_id = response.get("id")
+        if (response.get("status") == "completed" and isinstance(response_id, str)
+                and 0 < len(response_id) <= 256):
+            self.pending = (response, output["input"])
+
+    def finalize(self, delivered):
+        # Called only after ASGI has delivered the whole response. A cancelled
+        # final send must neither establish a checkpoint nor earn savings.
+        self.manager.invalidate(self.key)
+        if delivered and not self.invalid and self.pending is not None:
+            response, output = self.pending
+            self.manager.saved_bytes += self.saved_bytes
+            if not outstanding_calls(self.input_items + output):
+                self.manager.commit(self.key, response, self.fingerprints, output)
 
 
 def _parse_route(value: str) -> ModelRoute:
@@ -343,6 +393,15 @@ class ResponsesStreamNormalizer:
 
     def normalize(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
         event = normalize_transport_error(transform_response(payload, self.tool_context))
+        # Perplexity can send a failed terminal event with only a top-level
+        # error. Codex reads response.error; without that envelope it loses
+        # the actual cause and reports a generic disconnected stream.
+        if (event.get("type") == "response.failed"
+                and not isinstance(event.get("response"), dict)
+                and isinstance(event.get("error"), dict)):
+            event = {**event, "response": {"id": "resp_" + uuid.uuid4().hex,
+                     "object": "response", "status": "failed", "output": [],
+                     "error": event["error"]}}
         event_type = event.get("type")
         emitted: list[dict[str, Any]] = []
 
@@ -512,6 +571,8 @@ async def _translate_sse(
     tool_context: ToolContext,
     client: httpx.AsyncClient,
     budget_status: BudgetStatus | None = None,
+    capture: ContinuationCapture | None = None,
+    lines: AsyncIterator[str] | None = None,
 ) -> AsyncIterator[bytes]:
     data_lines: list[str] = []
     raw_lines: list[str] = []
@@ -525,25 +586,40 @@ async def _translate_sse(
         "response.created", "response.in_progress", "response.completed", "response.failed", "response.incomplete",
     }
     try:
-        async for line in upstream.aiter_lines():
+        async for line in lines if lines is not None else upstream.aiter_lines():
             if line == "":
                 if data_lines:
                     data = "\n".join(data_lines)
                     if data != "[DONE]":
+                        parsed = None
                         try:
                             parsed = json.loads(data)
                             if budget_status is not None and not size_failure_counted and isinstance(parsed, dict):
                                 if normalize_transport_error(parsed) is not parsed:
                                     budget_status.failures += 1
                                     size_failure_counted = True
+                            if capture is not None:
+                                if not isinstance(parsed, dict) or not isinstance(parsed.get("type"), str):
+                                    capture.invalid = True
+                                elif parsed.get("type") == "response.completed":
+                                    terminal = parsed.get("response")
+                                    if (not isinstance(terminal, dict) or terminal.get("status") != "completed"
+                                            or not isinstance(terminal.get("output"), list)):
+                                        capture.invalid = True
                             if isinstance(parsed, dict) and parsed.get("type") in normalized_types:
                                 for event in normalizer.normalize(parsed):
+                                    if capture is not None:
+                                        capture.observe(event)
                                     event_type = event.get("type", "message")
                                     encoded = json.dumps(event, separators=(",", ":"))
                                     yield f"event: {event_type}\ndata: {encoded}\n\n".encode()
                                 raw_lines.clear()
                         except json.JSONDecodeError:
+                            if capture is not None:
+                                capture.invalid = True
                             pass
+                        if capture is not None and isinstance(parsed, dict) and parsed.get("type") == "error":
+                            capture.invalid = True
                 if raw_lines:
                     yield ("\n".join(raw_lines) + "\n\n").encode()
                 data_lines.clear()
@@ -553,13 +629,50 @@ async def _translate_sse(
                 if line.startswith("data:"):
                     data_lines.append(line[5:].lstrip())
         if raw_lines:
+            if capture is not None:
+                capture.invalid = True
             yield ("\n".join(raw_lines) + "\n\n").encode()
+        if capture is not None:
+            capture.commit()
     finally:
         await upstream.aclose()
         await client.aclose()
 
 
+async def _continuation_stream_start(upstream: httpx.Response) -> tuple[AsyncIterator[str], bool]:
+    """Inspect only the first SSE block before any downstream bytes are sent.
+
+    A successful/ambiguous first block ends recovery eligibility. Bound buffering
+    so this does not turn the incremental transport into a buffered response.
+    """
+    iterator = upstream.aiter_lines()
+    prefix: list[str] = []
+    size = 0
+    async for line in iterator:
+        prefix.append(line)
+        size += len(line.encode("utf-8")) + 1
+        if not line or size >= 65536:
+            break
+    rejected = False
+    data = "\n".join(line[5:].lstrip() for line in prefix if line.startswith("data:"))
+    if prefix and prefix[-1] == "" and data:
+        try:
+            parsed = json.loads(data)
+            if isinstance(parsed, dict) and parsed.get("type") in {"error", "response.failed", "response.incomplete"}:
+                rejected = prior_response_error(parsed) or prior_response_error(parsed.get("response"))
+        except (ValueError, UnicodeDecodeError):
+            pass
+    async def combined():
+        for line in prefix:
+            yield line
+        async for line in iterator:
+            yield line
+    return combined(), rejected
+
+
 def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
+    if settings.continuation not in {"auto", "disabled"}:
+        raise ValueError("continuation must be auto or disabled")
     model_routes = _model_routes(settings)
     app = FastAPI(
         title="Codex–Perplexity Adapter",
@@ -569,13 +682,15 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
         openapi_url=None,
     )
     budget_status = BudgetStatus()
+    continuation = ContinuationManager(enabled=settings.continuation == "auto")
+    app.state.continuation = continuation
     app.add_middleware(StatusMiddleware, status=budget_status)
 
     @app.get("/v1/adapter/status")
     async def adapter_status(authorization: str | None = Header(default=None)) -> Response:
         if not settings.local_token or not _authorized(authorization, settings.local_token):
             return _error(401, "Invalid local adapter token", "authentication_error")
-        return JSONResponse(budget_status.snapshot(), headers={"Cache-Control": "no-store"})
+        return JSONResponse({**budget_status.snapshot(), **continuation.snapshot()}, headers={"Cache-Control": "no-store"})
 
     @app.get("/")
     async def root() -> dict[str, Any]:
@@ -633,42 +748,96 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
 
         payload = _normalize_model_request(payload, route)
         upstream_payload, tool_context = transform_request(payload, route.upstream)
-        try:
-            upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload, notices=settings.budget_notices)
-        except RequestTooLarge as exc:
+        full_payload = upstream_payload
+        capture = None
+        key = continuation.session_key(request.headers.get("session-id"), request.headers.get("thread-id"))
+        key = await continuation.acquire(key)
+        if key is not None:
+            request.state.continuation_lease = (continuation, key)
+            if "previous_response_id" not in full_payload and isinstance(full_payload.get("input"), list):
+                fingerprints = await asyncio.to_thread(continuation.fingerprints, full_payload)
+                upstream_payload = continuation.select(key, full_payload, fingerprints)
+                capture = ContinuationCapture(continuation, key, fingerprints, full_payload.get("tools", []), route.upstream)
+                capture.input_items = full_payload["input"]
+                request.state.continuation_outcome = capture
+            else:
+                continuation.invalidate(key)
+        optimized = upstream_payload is not full_payload
+        full_size = await asyncio.to_thread(lambda: len(encode_request(full_payload))) if optimized else 0
+        def size_error(exc):
             budget_status.failures += 1
             budget_status.active[request.state.budget_request_id] = exc.size
-            return _context_limit_response({
-                "message": str(exc), "type": "invalid_request_error", "code": "context_length_exceeded",
-            }, stream=bool(upstream_payload.get("stream")))
-        budget_status.active[request.state.budget_request_id] = len(upstream_body)
-        level = warning_level(len(upstream_body))
-        if level:
-            budget_status.warnings[level - 1] += 1
+            return _context_limit_response({"message": str(exc), "type": "invalid_request_error",
+                                            "code": "context_length_exceeded"}, stream=bool(upstream_payload.get("stream")))
+        def account(body):
+            budget_status.active[request.state.budget_request_id] = len(body)
+            level = warning_level(len(body))
+            if level:
+                budget_status.warnings[level - 1] += 1
+        try:
+            upstream_body = await asyncio.to_thread(prepare_request_body, upstream_payload)
+        except RequestTooLarge as exc:
+            return size_error(exc)
+        account(upstream_body)
         client = httpx.AsyncClient(
             timeout=httpx.Timeout(settings.timeout_seconds),
             transport=transport,
         )
-        upstream_request = client.build_request(
-            "POST",
-            PERPLEXITY_RESPONSES_URL,
-            headers={
-                "Authorization": f"Bearer {settings.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream" if upstream_payload.get("stream") else "application/json",
-            },
-            content=upstream_body,
-        )
-        try:
+        tool_replay_counted = False
+        async def send(body):
+            nonlocal tool_replay_counted
+            upstream_request = client.build_request("POST", PERPLEXITY_RESPONSES_URL,
+                headers={"Authorization": f"Bearer {settings.api_key}", "Content-Type": "application/json",
+                         "Accept": "text/event-stream" if upstream_payload.get("stream") else "application/json"}, content=body)
             for attempt in range(RATE_LIMIT_RETRIES + 1):
-                upstream = await client.send(upstream_request, stream=bool(upstream_payload.get("stream")))
-                if upstream.status_code != 429 or attempt == RATE_LIMIT_RETRIES:
-                    break
-                delay = _retry_delay(upstream.headers.get("retry-after"), attempt)
+                if (not tool_replay_counted and upstream_payload is full_payload
+                        and "previous_response_id" not in full_payload
+                        and isinstance(full_payload.get("input"), list) and has_local_tools(full_payload["input"])):
+                    continuation.tool_replays += 1
+                    tool_replay_counted = True
+                result = await client.send(upstream_request, stream=bool(upstream_payload.get("stream")))
+                if result.status_code != 429 or attempt == RATE_LIMIT_RETRIES:
+                    return result
+                delay = _retry_delay(result.headers.get("retry-after"), attempt)
                 if delay is None:
-                    break
-                await upstream.aclose()
+                    return result
+                await result.aclose()
                 await asyncio.sleep(delay)
+            raise AssertionError("unreachable")
+        try:
+            if optimized:
+                continuation.continuations += 1
+            else:
+                continuation.replays += 1
+            upstream = await send(upstream_body)
+            stream_lines = None
+            rejected_prior = False
+            if optimized and upstream.status_code in {400, 404, 422}:
+                body = await upstream.aread()
+                try:
+                    rejected_prior = prior_response_error(json.loads(body))
+                except (ValueError, UnicodeDecodeError):
+                    rejected_prior = False
+            elif optimized and upstream.status_code < 400 and upstream_payload.get("stream"):
+                stream_lines, rejected_prior = await _continuation_stream_start(upstream)
+            if rejected_prior:
+                continuation.invalidate(key)
+                continuation.fallbacks += 1
+                upstream_payload = full_payload
+                try:
+                    upstream_body = await asyncio.to_thread(prepare_request_body, full_payload)
+                except RequestTooLarge as exc:
+                    await upstream.aclose()
+                    await client.aclose()
+                    return size_error(exc)
+                account(upstream_body)
+                continuation.replays += 1
+                optimized = False
+                await upstream.aclose()
+                upstream = await send(upstream_body)
+                stream_lines = None
+            if optimized and upstream.status_code < 400 and capture is not None:
+                capture.saved_bytes = max(0, full_size - len(upstream_body))
         except httpx.HTTPError:
             await client.aclose()
             return _error(502, "Could not reach Perplexity", "upstream_error")
@@ -701,7 +870,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
 
         if upstream_payload.get("stream"):
             return StreamingResponse(
-                _translate_sse(upstream, tool_context, client, budget_status),
+                _translate_sse(upstream, tool_context, client, budget_status, capture, stream_lines),
                 status_code=upstream.status_code,
                 media_type="text/event-stream",
                 headers={
@@ -725,6 +894,8 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                             headers={"content-type": content_type})
         if isinstance(parsed, dict):
             transformed = transform_response(parsed, tool_context)
+            if capture is not None:
+                capture.commit(transformed)
             if transformed == parsed:
                 return Response(content=body, status_code=upstream.status_code,
                                 headers={"content-type": content_type})

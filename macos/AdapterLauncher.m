@@ -28,7 +28,9 @@
 @property(strong) NSButton *startButton;
 @property(strong) NSButton *stopButton;
 @property(strong) NSTextField *statusLabel;
-@property(strong) NSTextField *budgetLabel;
+@property(strong) NSStackView *contentStack;
+@property(strong) NSArray<NSTextField *> *budgetLabels;
+@property(strong) NSMutableArray<NSTextField *> *wrappingLabels;
 @property(strong) NSTimer *budgetTimer;
 @property(strong) NSTask *serverTask;
 @property(strong) NSURL *pidURL;
@@ -109,8 +111,9 @@
 }
 
 - (void)buildWindow {
+    self.wrappingLabels = [NSMutableArray array];
     self.window = [[NSWindow alloc]
-        initWithContentRect:NSMakeRect(0, 0, 580, 365)
+        initWithContentRect:NSMakeRect(0, 0, 580, 300)
                   styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                     backing:NSBackingStoreBuffered
                       defer:NO];
@@ -124,6 +127,7 @@
     NSTextField *description = [NSTextField wrappingLabelWithString:
         @"Runs a private local Responses API at 127.0.0.1:4000 for Codex. Your Perplexity key stays in this process and is never saved."];
     description.textColor = NSColor.secondaryLabelColor;
+    [self.wrappingLabels addObject:description];
 
     NSTextField *keyLabel = [self label:@"Perplexity API key"];
     keyLabel.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
@@ -152,31 +156,99 @@
     self.stopButton.bezelStyle = NSBezelStyleRounded;
     self.stopButton.enabled = NO;
 
-    self.statusLabel = [self label:@"● Stopped"];
+    self.statusLabel = [NSTextField wrappingLabelWithString:@"● Stopped"];
     self.statusLabel.textColor = NSColor.secondaryLabelColor;
+    [self.wrappingLabels addObject:self.statusLabel];
 
     NSStackView *buttonRow = [NSStackView stackViewWithViews:@[self.startButton, self.stopButton, self.statusLabel]];
     buttonRow.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     buttonRow.spacing = 10;
     buttonRow.alignment = NSLayoutAttributeCenterY;
+    buttonRow.distribution = NSStackViewDistributionFill;
+    [self.statusLabel setContentHuggingPriority:1 forOrientation:NSLayoutConstraintOrientationHorizontal];
+    for (NSButton *button in @[self.startButton, self.stopButton]) {
+        [button setContentHuggingPriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+        [button setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
+    }
 
-    self.budgetLabel = [NSTextField wrappingLabelWithString:@"Adapter-wide budget statistics appear while running. No request content is retained."];
-    self.budgetLabel.textColor = NSColor.secondaryLabelColor;
-    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, buttonRow, self.budgetLabel]];
+    NSMutableArray<NSTextField *> *budgetLabels = [NSMutableArray array];
+    for (NSInteger row = 0; row < 4; row++) {
+        NSTextField *label = [NSTextField wrappingLabelWithString:@""];
+        label.font = [NSFont systemFontOfSize:12];
+        label.textColor = NSColor.secondaryLabelColor;
+        [budgetLabels addObject:label];
+        [self.wrappingLabels addObject:label];
+    }
+    self.budgetLabels = budgetLabels;
+    NSStackView *statistics = [NSStackView stackViewWithViews:budgetLabels];
+    statistics.orientation = NSUserInterfaceLayoutOrientationVertical;
+    statistics.alignment = NSLayoutAttributeLeading;
+    statistics.spacing = 2;
+    statistics.detachesHiddenViews = YES;
+    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, buttonRow, statistics]];
+    self.contentStack = stack;
     stack.orientation = NSUserInterfaceLayoutOrientationVertical;
     stack.alignment = NSLayoutAttributeLeading;
-    stack.spacing = 12;
+    stack.spacing = 10;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [content addSubview:stack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [stack.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:28],
-        [stack.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-28],
-        [stack.topAnchor constraintEqualToAnchor:content.topAnchor constant:28],
+        [stack.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:20],
+        [stack.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-20],
+        [stack.topAnchor constraintEqualToAnchor:content.topAnchor constant:20],
         [keyRow.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [buttonRow.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [statistics.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [self.keyField.heightAnchor constraintEqualToConstant:28],
         [description.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
-        [self.budgetLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+    ]];
+    for (NSTextField *label in self.budgetLabels) {
+        [label.widthAnchor constraintEqualToAnchor:statistics.widthAnchor].active = YES;
+    }
+    for (NSTextField *label in self.wrappingLabels) {
+        label.maximumNumberOfLines = 0;
+        label.lineBreakMode = NSLineBreakByWordWrapping;
+        [label setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationVertical];
+    }
+    [self setBudgetRows:@[@"Activity and request statistics appear while running."]];
+}
+
+- (void)fitWindowToContent {
+    [self.window.contentView layoutSubtreeIfNeeded];
+    for (NSTextField *label in self.wrappingLabels) {
+        label.preferredMaxLayoutWidth = NSWidth(label.frame);
+        [label invalidateIntrinsicContentSize];
+    }
+    [self.window.contentView layoutSubtreeIfNeeded];
+    CGFloat height = ceil(self.contentStack.fittingSize.height) + 40;
+    NSRect frame = [self.window frameRectForContentRect:NSMakeRect(0, 0, 580, height)];
+    frame.origin.x = NSMinX(self.window.frame);
+    frame.origin.y = NSMaxY(self.window.frame) - NSHeight(frame);
+    [self.window setFrame:frame display:YES];
+}
+
+- (void)setBudgetRows:(NSArray<NSString *> *)rows {
+    for (NSUInteger index = 0; index < self.budgetLabels.count; index++) {
+        self.budgetLabels[index].hidden = index >= rows.count;
+        self.budgetLabels[index].stringValue = index < rows.count ? rows[index] : @"";
+    }
+    [self fitWindowToContent];
+}
+
+- (void)setConnectionStatus:(NSString *)text color:(NSColor *)color {
+    self.statusLabel.stringValue = text;
+    self.statusLabel.textColor = color;
+    [self fitWindowToContent];
+}
+
+- (void)displayBudget:(NSDictionary *)values {
+    NSInteger warnings = [values[@"warnings_10mb"] integerValue] + [values[@"warnings_12mb"] integerValue] + [values[@"warnings_15mb"] integerValue];
+    [self setBudgetRows:@[
+        [NSString stringWithFormat:@"Active: %@ · Last: %.2f MB · Largest active: %.2f MB", values[@"active_requests"], [values[@"latest_completed_request_bytes"] doubleValue] / 1000000, [values[@"largest_active_request_bytes"] doubleValue] / 1000000],
+        [NSString stringWithFormat:@"Warnings: %ld · Size failures: %@ · Limit: 18 MB", (long)warnings, values[@"size_failures"]],
+        [NSString stringWithFormat:@"Continuations: %@ · Replays: %@ · Fallbacks: %@", values[@"continuation_requests"], values[@"full_replay_requests"], values[@"continuation_fallbacks"]],
+        [NSString stringWithFormat:@"Tool replays: %@ · Saved: %.2f MB", values[@"tool_boundary_replays"], [values[@"saved_request_bytes"] doubleValue] / 1000000],
     ]];
 }
 
@@ -189,6 +261,11 @@
     } else {
         [self showAlert:@"The clipboard does not contain text."];
     }
+}
+
+- (NSArray<NSString *> *)serverArguments {
+    return @[@"--port", @"4000", @"--log-level", @"info",
+             @"--pid-file", self.pidURL.path, @"--continuation", @"auto"];
 }
 
 - (void)startClicked:(id)sender {
@@ -213,8 +290,7 @@
 
     NSTask *task = [[NSTask alloc] init];
     task.executableURL = executable;
-    task.arguments = @[@"--port", @"4000", @"--log-level", @"info",
-                       @"--pid-file", self.pidURL.path];
+    task.arguments = [self serverArguments];
     NSMutableDictionary *environment = [NSProcessInfo.processInfo.environment mutableCopy];
     environment[@"PERPLEXITY_API_KEY"] = apiKey;
     task.environment = environment;
@@ -236,8 +312,7 @@
             self.serverTask = nil;
             [self setRunning:NO];
             if (finished.terminationStatus != 0) {
-                self.statusLabel.stringValue = @"● Could not start — port 4000 may be in use";
-                self.statusLabel.textColor = NSColor.systemRedColor;
+                [self setConnectionStatus:@"● Could not start — port 4000 may be in use" color:NSColor.systemRedColor];
             }
         });
     };
@@ -310,14 +385,12 @@
         self.budgetTimer = [NSTimer scheduledTimerWithTimeInterval:3 repeats:YES block:^(NSTimer *timer) {
             [weakSelf refreshBudget];
         }];
-    } else {
-        self.budgetLabel.stringValue = @"Adapter-wide budget statistics unavailable while stopped.";
     }
+    [self setBudgetRows:@[running ? @"Fetching adapter-wide statistics…" : @"Activity and request statistics appear while running."]];
     self.startButton.enabled = !running;
     self.stopButton.enabled = running;
     self.keyField.enabled = !running;
-    self.statusLabel.stringValue = running ? @"● Starting…" : @"● Stopped";
-    self.statusLabel.textColor = running ? NSColor.systemOrangeColor : NSColor.secondaryLabelColor;
+    [self setConnectionStatus:running ? @"● Starting…" : @"● Stopped" color:running ? NSColor.systemOrangeColor : NSColor.secondaryLabelColor];
 }
 
 - (void)refreshBudget {
@@ -334,11 +407,10 @@
             typeof(self) self = weakSelf;
             if (!self || !self.serverTask.running) return;
             if ([(NSHTTPURLResponse *)response statusCode] != 200 || ![values isKindOfClass:NSDictionary.class]) {
-                self.budgetLabel.stringValue = @"Adapter-wide budget statistics unavailable.";
+                [self setBudgetRows:@[@"Adapter-wide statistics unavailable."]];
                 return;
             }
-            NSInteger warnings = [values[@"warnings_10mb"] integerValue] + [values[@"warnings_12mb"] integerValue] + [values[@"warnings_15mb"] integerValue];
-            self.budgetLabel.stringValue = [NSString stringWithFormat:@"Adapter-wide · Active: %@ · Last: %.2f MB · Largest active: %.2f MB\nWarnings: %ld · Size failures: %@ · Limit: 18 MB (decimal)", values[@"active_requests"], [values[@"latest_completed_request_bytes"] doubleValue] / 1000000, [values[@"largest_active_request_bytes"] doubleValue] / 1000000, (long)warnings, values[@"size_failures"]];
+            [self displayBudget:values];
         });
     }] resume];
 }
@@ -354,15 +426,13 @@
             if (self == nil || !self.serverTask.running) return;
             NSInteger status = [(NSHTTPURLResponse *)response statusCode];
             if (status == 200 && data != nil) {
-                self.statusLabel.stringValue = @"● Running at 127.0.0.1:4000";
-                self.statusLabel.textColor = NSColor.systemGreenColor;
+                [self setConnectionStatus:@"● Running at 127.0.0.1:4000" color:NSColor.systemGreenColor];
             } else if (attempt < 12) {
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [self verifyHealth:attempt + 1];
                 });
             } else {
-                self.statusLabel.stringValue = @"● Server did not become ready";
-                self.statusLabel.textColor = NSColor.systemRedColor;
+                [self setConnectionStatus:@"● Server did not become ready" color:NSColor.systemRedColor];
             }
         });
     }] resume];
