@@ -1,5 +1,6 @@
 """Extracted servers -> authenticated loopback TLS mock; never Perplexity."""
 import base64
+import argparse
 import http.server
 import io
 import json
@@ -16,11 +17,14 @@ import time
 
 import httpx
 from PIL import Image
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from codex_perplexity_adapter.image_resize import image_parts
+from scripts.work_budget_fixtures import many_images
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "build/qualification-0.1.15"
 
-def run():
+def run(test_app=None):
     with tempfile.TemporaryDirectory(prefix="resize-tls-") as folder:
         tmp = Path(folder)
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-keyout", str(tmp / "key.pem"), "-out", str(tmp / "cert.pem"), "-subj", "/CN=api.perplexity.ai", "-addext", "subjectAltName=DNS:api.perplexity.ai"], check=True, capture_output=True)
@@ -43,7 +47,7 @@ def run():
                     assert first.startswith(b"POST /v1/responses ")
                     assert headers["authorization"] == "Bearer synthetic-package-key"
                     body = reader.read(int(headers["content-length"])); p = json.loads(body)
-                    images = [part["image_url"] for item in p.get("input", []) if isinstance(item, dict) for part in item.get("content", []) if isinstance(part, dict) and part.get("type") == "input_image"]
+                    images = [part["image_url"] for part in image_parts(p)]
                     sizes = []
                     for url in images:
                         with Image.open(io.BytesIO(base64.b64decode(url.split(",", 1)[1]))) as im: sizes.append(im.size)
@@ -58,11 +62,11 @@ def run():
         reports = []
         try:
             url = "data:image/jpeg;base64," + base64.b64encode((OUT / "form-original.jpg").read_bytes()).decode()
-            for arch in ("arm64", "x86_64"):
-                executable = OUT / "extracted" / arch / "Codex Perplexity Adapter Test.app/Contents/Resources/adapter-server"
+            for arch in (("arm64",) if test_app else ("arm64", "x86_64")):
+                executable = (test_app if test_app else OUT / "extracted" / arch / "Codex Perplexity Adapter Test.app") / "Contents/Resources/adapter-server"
                 sock = socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
                 env = dict(os.environ, PERPLEXITY_API_KEY="synthetic-package-key", HTTPS_PROXY=f"http://127.0.0.1:{proxy.server_address[1]}", NO_PROXY="127.0.0.1,localhost", SSL_CERT_FILE=str(tmp / "cert.pem"))
-                command = (["arch", "-x86_64"] if arch == "x86_64" else []) + [str(executable), "--port", str(port), "--resize-images-on-limit", "--log-level", "error"]
+                command = (["arch", "-x86_64"] if arch == "x86_64" else []) + [str(executable), "--port", str(port), "--resize-images-on-limit", "--log-level", "info"]
                 with (OUT / f"package-{arch}.log").open("w") as log:
                     process = subprocess.Popen(command, env=env, stdout=log, stderr=log)
                     try:
@@ -77,7 +81,7 @@ def run():
                             headers = {"Authorization": "Bearer local-adapter-token"}
                             start = len(seen)
                             for stream in (False, True):
-                                p = {"model": "gpt-6.1-sol", "stream": stream, "input": [{"role": "user", "content": [{"type": "input_image", "image_url": url}]} for _ in range(100)]}
+                                p = many_images(); p["stream"] = stream
                                 r = c.post("/v1/responses", headers=headers, json=p); assert r.status_code == 200, r.text
                                 assert "completed" in r.text
                                 before = len(seen)
@@ -93,4 +97,6 @@ def run():
     (OUT / "packaged-resize.json").write_text(json.dumps(reports, indent=2) + "\n")
     print(json.dumps([{"arch": r["arch"], "bytes": [p["bytes"] for p in r["requests"]], "passed": True} for r in reports]))
 
-if __name__ == "__main__": run()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(); parser.add_argument('--app', type=Path)
+    run(parser.parse_args().app)

@@ -120,7 +120,7 @@ class ResizeTests(unittest.TestCase):
 
     def test_growing_png_never_replaces_and_cannot_fit(self):
         p = payload(self.png)
-        with patch("codex_perplexity_adapter.image_resize.REQUEST_BUDGET_BYTES", 1), patch("codex_perplexity_adapter.image_resize._candidates", return_value=iter([self.png + "A"])):
+        with patch("codex_perplexity_adapter.image_resize.REQUEST_BUDGET_BYTES", 1), patch("codex_perplexity_adapter.image_resize._candidates", side_effect=lambda *args: (x for x in [self.png + "A"])):
             self.assertEqual(resize_request(p, True).body, encode_request(p))
 
     def test_json_sse_counters_without_continuation_and_failures(self):
@@ -265,7 +265,7 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
     async def test_cancellation_keeps_worker_busy_and_loop_responsive(self):
         entered, release = threading.Event(), threading.Event()
         calls = []
-        def blocked(payload, enabled):
+        def blocked(payload, enabled, work):
             calls.append(payload); entered.set(); release.wait(3)
             return payload
         resizer = ImageResizer(True)

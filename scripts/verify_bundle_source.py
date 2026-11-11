@@ -26,5 +26,12 @@ for module in ['__init__','app','cli','image_resize','continuation','request_siz
     source=root/'codex_perplexity_adapter'/(module+'.py')
     expected=compile(source.read_bytes(),bundled.co_filename,'exec')
     results[module]=signature(expected)==signature(bundled)
-print(json.dumps({'python':sys.version.split()[0],'modules_match':results}))
-if not all(results.values()):raise SystemExit(1)
+if '--anchor' in sys.argv:
+    bundled=pyz.extract('research.tool_continuation')
+    expected=compile((root/'research/tool_continuation.py').read_bytes(),bundled.co_filename,'exec')
+    results['research.tool_continuation']=signature(expected)==signature(bundled)
+    entry=marshal.loads(archive.extract('anchor_server_entry'))
+    results['anchor_server_entry']=signature(entry)==signature(compile((root/'research/anchor_server_entry.py').read_bytes(),entry.co_filename,'exec'))
+codecs={name: name in archive.toc for name in ('PIL/_imaging.cpython-313-darwin.so',)}
+print(json.dumps({'python':sys.version.split()[0],'modules_match':results,'codecs':codecs}))
+if not all(results.values()) or not all(codecs.values()):raise SystemExit(1)

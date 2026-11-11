@@ -18,15 +18,19 @@ from codex_perplexity_adapter.request_size import encode_request
 from codex_perplexity_adapter.image_resize import resize_request
 from unittest.mock import patch
 from scripts.qualify_app_server import RPC
+from scripts.work_budget_fixtures import many_images
+import base64
+from research.tool_continuation import experiment
 
 OUT = Path(__file__).resolve().parents[1] / "build/qualification-0.1.15"
 
 def run(binary):
+    OUT.mkdir(parents=True, exist_ok=True)
     seen = []
     measured = []
-    def prepare(payload, enabled):
+    def prepare(payload, enabled, work=None):
         measured.append(len(encode_request(payload)))
-        return resize_request(payload, enabled)
+        return resize_request(payload, enabled, work)
     guard_patch = patch("codex_perplexity_adapter.image_resize.resize_request", prepare)
     guard_patch.start()
     async def provider(request):
@@ -53,7 +57,13 @@ def run(binary):
                 try:
                     rpc.call("initialize", {"clientInfo": {"name": "resize-test", "version": "0.1.15"}}); rpc.send("initialized")
                     ident = rpc.call("thread/start", {"cwd": str(root), "approvalPolicy": "never", "sandbox": "read-only"})["thread"]["id"]
-                    inputs = [{"type": "text", "text": "Keep RESIZE_MARKER_724"}] + [{"type": "localImage", "path": str(OUT / "form-original.jpg")} for _ in range(180)]
+                    urls = many_images(unique=150, count=150)["input"][-1]["output"]
+                    paths = []
+                    for index, part in enumerate(urls):
+                        path = root / f"page-{index}.jpg"
+                        path.write_bytes(base64.b64decode(part["image_url"].split(",", 1)[1]))
+                        paths.append(path)
+                    inputs = [{"type": "text", "text": "Keep RESIZE_MARKER_724"}] + [{"type": "localImage", "path": str(path)} for path in paths]
                     rpc.call("turn/start", {"threadId": ident, "input": inputs})
                     first = rpc.until(lambda e: e.get("method") == "turn/completed", timeout=120)
                     rpc.call("turn/start", {"threadId": ident, "input": [{"type": "text", "text": "Repeat the marker"}]})
@@ -70,4 +80,6 @@ def run(binary):
     finally:
         server.should_exit = True; thread.join(timeout=10); guard_patch.stop()
 
-if __name__ == "__main__": run(str(Path(sys.argv[1]).resolve()))
+if __name__ == "__main__":
+    with experiment("anchor"):
+        run(str(Path(sys.argv[1]).resolve()))

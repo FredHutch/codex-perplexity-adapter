@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import __version__
 from .continuation import ContinuationManager, has_local_tools, outstanding_calls, prior_response_error
-from .image_resize import ImageResizer, RESIZE_POLICY
+from .image_resize import ImageResizer, ResizeWorkBudget, RESIZE_POLICY
 from .request_size import RequestTooLarge, encode_request, normalize_transport_error, warning_level
 from .status import BudgetStatus, StatusMiddleware
 from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
@@ -789,8 +789,28 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             level = warning_level(len(body))
             if level:
                 budget_status.warnings[level - 1] += 1
+        resize_work = ResizeWorkBudget()
+        async def prepare_images(body):
+            # The request body has been consumed. Watch disconnects while a
+            # worker is queued or in native code, before opening upstream.
+            async def disconnected():
+                while True:
+                    if (await request.receive())["type"] == "http.disconnect":
+                        return
+            preparation = asyncio.create_task(image_resizer.prepare(body, resize_work))
+            watcher = asyncio.create_task(disconnected())
+            try:
+                done, _ = await asyncio.wait((preparation, watcher), return_when=asyncio.FIRST_COMPLETED)
+                if watcher in done:
+                    raise asyncio.CancelledError()
+                return await preparation
+            finally:
+                watcher.cancel()
+                if not preparation.done():
+                    preparation.cancel()
+                await asyncio.gather(watcher, preparation, return_exceptions=True)
         try:
-            prepared = await image_resizer.prepare(upstream_payload)
+            prepared = await prepare_images(upstream_payload)
             upstream_body = prepared.body
         except RequestTooLarge as exc:
             return size_error(exc)
@@ -841,7 +861,7 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
                 continuation.fallbacks += 1
                 upstream_payload = full_payload
                 try:
-                    prepared = await image_resizer.prepare(full_payload)
+                    prepared = await prepare_images(full_payload)
                     upstream_body = prepared.body
                 except RequestTooLarge as exc:
                     await upstream.aclose()
