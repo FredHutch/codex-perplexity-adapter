@@ -4,6 +4,7 @@ set -euo pipefail
 project_dir="${0:A:h}"
 pipx_venv="${HOME}/Library/Application Support/pipx/venvs/codex-perplexity-adapter"
 target_arch="${ADAPTER_TARGET_ARCH:-arm64}"
+output_dir="${ADAPTER_OUTPUT_DIR:-${project_dir}/dist}"
 pyinstaller="${ADAPTER_PYINSTALLER:-${pipx_venv}/bin/pyinstaller}"
 codesign_identity="${ADAPTER_CODESIGN_IDENTITY:-Developer ID Application: Andrew Portuguese (SFC29VVF27)}"
 entitlements="${project_dir}/macos/entitlements.plist"
@@ -11,13 +12,13 @@ entitlements="${project_dir}/macos/entitlements.plist"
 case "${target_arch}" in
   arm64)
     build_dir="${project_dir}/build/macos"
-    final_app="${project_dir}/dist/Codex Perplexity Adapter.app"
-    final_zip="${project_dir}/dist/Codex-Perplexity-Adapter-macOS-arm64.zip"
+    final_app="${output_dir}/Codex Perplexity Adapter.app"
+    final_zip="${output_dir}/Codex-Perplexity-Adapter-macOS-arm64.zip"
     ;;
   x86_64)
     build_dir="${project_dir}/build/macos-x86_64"
-    final_app="${project_dir}/dist/x86_64/Codex Perplexity Adapter.app"
-    final_zip="${project_dir}/dist/Codex-Perplexity-Adapter-macOS-x86_64.zip"
+    final_app="${output_dir}/x86_64/Codex Perplexity Adapter.app"
+    final_zip="${output_dir}/Codex-Perplexity-Adapter-macOS-x86_64.zip"
     ;;
   *)
     print -u2 "Unsupported target architecture: ${target_arch}"

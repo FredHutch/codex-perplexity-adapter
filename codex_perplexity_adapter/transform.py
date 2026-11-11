@@ -165,6 +165,21 @@ def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
             converted["output"] = _normalize_tool_output(
                 converted.get("output"), custom=item_type == "custom_tool_call_output"
             )
+            # Desktop-created chats carry a tool notification without a call ID.
+            # Keep its content as untrusted conversation input; it cannot be
+            # paired with a local call in the new chat.
+            namespace = converted.pop("namespace", None)
+            name = converted.pop("name", None)
+            if not converted.get("call_id") and isinstance(namespace, str) and isinstance(name, str):
+                output = converted["output"]
+                parts = output if isinstance(output, list) else [
+                    {"type": "input_text", "text": stringify_tool_output(output)}
+                ]
+                normalized.append({"type": "message", "role": "user", "content": [
+                    {"type": "input_text", "text": f"Tool notification from {namespace}.{name}:"},
+                    *parts,
+                ]})
+                continue
             normalized.append(converted)
             continue
         if "type" not in item:
