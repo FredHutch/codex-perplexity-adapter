@@ -22,7 +22,7 @@ from codex_perplexity_adapter.image_resize import image_parts
 from scripts.work_budget_fixtures import many_images
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "build/qualification-0.1.15"
+OUT = ROOT / "build/qualification-0.1.16"
 
 def run(test_app=None):
     with tempfile.TemporaryDirectory(prefix="resize-tls-") as folder:
@@ -61,12 +61,11 @@ def run(test_app=None):
         thread = threading.Thread(target=proxy.serve_forever, daemon=True); thread.start()
         reports = []
         try:
-            url = "data:image/jpeg;base64," + base64.b64encode((OUT / "form-original.jpg").read_bytes()).decode()
             for arch in (("arm64",) if test_app else ("arm64", "x86_64")):
                 executable = (test_app if test_app else OUT / "extracted" / arch / "Codex Perplexity Adapter.app") / "Contents/Resources/adapter-server"
                 sock = socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
                 env = dict(os.environ, PERPLEXITY_API_KEY="synthetic-package-key", HTTPS_PROXY=f"http://127.0.0.1:{proxy.server_address[1]}", NO_PROXY="127.0.0.1,localhost", SSL_CERT_FILE=str(tmp / "cert.pem"))
-                command = (["arch", "-x86_64"] if arch == "x86_64" else []) + [str(executable), "--port", str(port), "--resize-images-on-limit", "--log-level", "info"]
+                command = (["arch", "-x86_64"] if arch == "x86_64" else []) + [str(executable), "--port", str(port), "--log-level", "info"]
                 with (OUT / f"package-{arch}.log").open("w") as log:
                     process = subprocess.Popen(command, env=env, stdout=log, stderr=log)
                     try:
@@ -93,6 +92,26 @@ def run(test_app=None):
                             assert len(records) == 2 and all(r["bytes"] <= 18_000_000 for r in records)
                             reports.append({"arch": arch, "mock_tls": True, "requests": records, "stats": stats})
                     finally: process.terminate(); process.wait(timeout=10)
+                # The CLI opt-out must reject the same image-heavy body unchanged.
+                disabled = subprocess.Popen(command + ["--no-resize-images-on-limit"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                try:
+                    with httpx.Client(base_url=f"http://127.0.0.1:{port}", trust_env=False, timeout=90) as c:
+                        for _ in range(200):
+                            try:
+                                if c.get("/health").status_code == 200: break
+                            except httpx.HTTPError: pass
+                            if disabled.poll() is not None: raise RuntimeError("disabled packaged server exited")
+                            time.sleep(.1)
+                        before = len(seen)
+                        r = c.post("/v1/responses", headers=headers, json=many_images())
+                        assert "context_length_exceeded" in r.text and len(seen) == before
+                        stats = c.get("/v1/adapter/status", headers=headers).json()
+                        assert stats["image_resize_requests"] == 0
+                        reports[-1]["cli_opt_out"] = True
+                finally: disabled.terminate(); disabled.wait(timeout=10)
+                conflict = subprocess.run(command + ["--resize-images-on-limit", "--no-resize-images-on-limit"], env=env, capture_output=True)
+                assert conflict.returncode == 2 and b"not allowed with argument" in conflict.stderr
+                reports[-1]["conflicting_flags_rejected"] = True
         finally: proxy.shutdown(); proxy.server_close()
     (OUT / "packaged-resize.json").write_text(json.dumps(reports, indent=2) + "\n")
     print(json.dumps([{"arch": r["arch"], "bytes": [p["bytes"] for p in r["requests"]], "passed": True} for r in reports]))

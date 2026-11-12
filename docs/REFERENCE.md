@@ -42,7 +42,7 @@ Streaming size failures use response.failed events so Codex recognizes them duri
 
 ## Oversized-image recovery
 
-The CLI option --resize-images-on-limit enables recovery, where it is off by default. The macOS app provides the saved “Resize images in oversized requests” checkbox, initially enabled. Changes apply after Stop/Start. The adapter uses port **4000**.
+Resizing is enabled by default in the CLI and Settings, and always enabled in the macOS app. Old saved resizing preferences are ignored. CLI users can preserve original image detail with --no-resize-images-on-limit. The compatibility flag --resize-images-on-limit remains accepted; supplying both flags is an error. The adapter uses port **4000**.
 
 After normalization and continuation selection, bodies at or below 19,000,000 bytes pass unchanged. Larger bodies try inline JPEG/PNG user and tool images in oldest-first occurrence order. Each long edge steps down by 15% to a 1,024-pixel floor, aiming for 18,000,000 bytes. Candidates come from the original pixels with Lanczos; JPEG keeps subsampling at quality 85, PNG keeps its format and transparency. Only smaller encoded candidates are retained. Newer images remain original if earlier changes suffice. If the target cannot be reached, a body within the hard guard is accepted; otherwise the normal compaction error remains. No image or text is removed.
 
@@ -54,7 +54,7 @@ Checkpoints bind original normalized client history and the resize policy to a c
 
 Authenticated numeric counters `image_resize_requests`, `resized_images` (occurrences), and `image_saved_request_bytes` count only the final completed and delivered attempt. “Image saved” is separate from “Saved”, which remains continuation savings before resizing. Failed responses, cancelled delivery, preflight rejection, omitted history and transport retries earn no image credit. Counters reset on restart.
 
-**Small-text readability is not qualified.** Synthetic form OCR lost decimal punctuation and misread identifiers at smaller resolutions. Turn resizing off for precision form review. The user-approved recovery behavior is released with this limitation. See [release verification](../VERIFICATION_0.1.15_RELEASE.md).
+**Small-text readability is not qualified.** Synthetic form OCR lost decimal punctuation and misread identifiers at smaller resolutions. Use the CLI with --no-resize-images-on-limit for precision form review. The user-approved recovery behavior is released with this limitation. See [release verification](../VERIFICATION_0.1.16_RELEASE.md).
 
 ## Automatic conversation continuation
 
@@ -70,7 +70,7 @@ If a generated prior reference is specifically rejected as unavailable, incomple
 
 ## Adapter-wide status
 
-`GET /v1/adapter/status` requires a configured bearer token even when ordinary API authentication is disabled. It exposes numeric active-request and byte statistics, threshold counts at 10/12/15 MB, size failures, continuation/replay/fallback counts, `tool_boundary_replays`, cache-entry count, and saved request bytes. Tool replays count transmitted full-history requests containing local tool items once per client request, excluding transport retries and preflight rejections. The macOS window shows continuation activity, tool replays, and savings. These counters reset on restart. Continuation savings compare the selected body before resizing with equivalent original full replay; fallback attempts do not count as savings. No session identifiers, fingerprints, response IDs, or content appear in status.
+`GET /v1/adapter/status` requires a configured bearer token even when ordinary API authentication is disabled. It exposes numeric active-request and byte statistics, threshold counts at 10/12/15 MB, size failures, continuation/replay/fallback counts, `tool_boundary_replays`, cache-entry count, and saved request bytes. Tool replays count transmitted full-history requests containing local tool items once per client request, excluding transport retries and preflight rejections. The macOS window shows all five statistics rows and the automatic-resizing readability note under **Details**. Details starts collapsed on every launch and retains its state during the current session. Statistics refresh immediately on opening Details while running, then every three seconds only while the window is visible, not minimized, and Details is expanded. Hiding, collapsing, or stopping cancels polling and invalidates outstanding callbacks. These counters reset on restart. Continuation savings compare the selected body before resizing with equivalent original full replay; fallback attempts do not count as savings. No session identifiers, fingerprints, response IDs, or content appear in status.
 
 Active request and response buffers remain in memory until completion, cancellation, or failure; secure erasure and protection from OS swap or crash capture are not guaranteed. HTTP/SSE transport is unchanged. There is no WebSocket transport, retrieval endpoint, disk cache, or image-hosting feature.
 
@@ -84,3 +84,9 @@ Active request and response buffers remain in memory until completion, cancellat
 - **Storage and logs:** Memory-only checkpoints are described above. The adapter has no database and does not intentionally log or persist request bodies, response bodies, or tool arguments. Access logging is disabled. The macOS app replaces its operational error log at `~/Library/Logs/Codex Perplexity Adapter.log` each time it starts.
 - **Network boundary:** The service listens only on `127.0.0.1` and has no command-line host option.
 - **Organizational responsibility:** Submit only data approved for processing by Perplexity under your organization's policies, agreements, and retention controls. Review Perplexity's terms for any downstream model-provider processing. The adapter cannot change Perplexity's retention or processing practices.
+
+## macOS window and menu bar
+
+The app launches with its window and Dock icon visible. Closing the window, pressing **⌘W**, or choosing **Hide to Menu Bar** (**⌘H**) hides the window and removes the Dock icon without stopping the server or active requests. The menu-bar icon stays available with current status, **Show Adapter**, **Start Adapter**, **Stop Adapter**, **About**, and **Quit**. Start and Stop follow the server state, including startup and failure. Starting from the menu reveals the existing window before asking for the key.
+
+**Show Adapter** restores the Dock icon and activates the same window. **About** also reveals it. Details expansion survives hide/show, and resizing the window to visible content preserves its top edge. **Quit** or **⌘Q** stops the server and terminates the app; closing its last window does not quit. No hidden state is saved and no login item is installed. Credentials remain memory-only.

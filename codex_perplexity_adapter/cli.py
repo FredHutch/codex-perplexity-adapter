@@ -15,8 +15,12 @@ from .app import Settings, _parse_route, create_app
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the Codex–Perplexity adapter")
     parser.add_argument("--port", type=int, default=4000)
-    parser.add_argument("--resize-images-on-limit", action="store_true",
-                        help="shrink older JPEG/PNG images only when a selected request exceeds 19 MB")
+    resizing = parser.add_mutually_exclusive_group()
+    resizing.add_argument("--resize-images-on-limit", dest="resize_images_on_limit", action="store_true",
+                          help="shrink older JPEG/PNG images when a request exceeds 19 MB (default)")
+    resizing.add_argument("--no-resize-images-on-limit", dest="resize_images_on_limit", action="store_false",
+                          help="preserve original image detail; reject requests that exceed 19 MB")
+    parser.set_defaults(resize_images_on_limit=True)
     parser.add_argument("--continuation", choices=("auto", "disabled"), default="auto",
                         help="reuse matching completed conversations (default: auto)")
     parser.add_argument(
