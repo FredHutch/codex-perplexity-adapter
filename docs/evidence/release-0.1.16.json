@@ -1,0 +1,1957 @@
+{
+  "version": "0.1.16",
+  "date": "2026-11-12",
+  "paid_api_calls": 0,
+  "actions_enabled": false,
+  "running_adapter_unchanged": true,
+  "python": {
+    "3.10": {
+      "tests": 138,
+      "passed": true
+    },
+    "3.12": {
+      "tests": 138,
+      "passed": true
+    },
+    "3.13": {
+      "tests": 138,
+      "passed": true
+    },
+    "local": {
+      "tests": 138,
+      "passed": true
+    },
+    "intel": {
+      "tests": 138,
+      "passed": true
+    }
+  },
+  "launcher": {
+    "arm64": [
+      {
+        "states": [
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Starting\u2026",
+            "state": "starting",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-collapsed",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-expanded",
+            "content_height": 367,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "large-counters",
+            "content_height": 412,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "statistics-unavailable",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped-again",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Could not start \u2014 port 4000 may be in use",
+            "state": "startup-error",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "wrapped-status",
+            "content_height": 323,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "error-collapsed",
+            "content_height": 258,
+            "top_preserved": true
+          }
+        ],
+        "arguments": [
+          "--port",
+          "4000",
+          "--log-level",
+          "info",
+          "--pid-file",
+          "/private/tmp/launcher-test-unused.pid",
+          "--continuation",
+          "auto",
+          "--resize-images-on-limit"
+        ],
+        "saved_preference": "absent"
+      },
+      {
+        "states": [
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Starting\u2026",
+            "state": "starting",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-collapsed",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-expanded",
+            "content_height": 367,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "large-counters",
+            "content_height": 412,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "statistics-unavailable",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped-again",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Could not start \u2014 port 4000 may be in use",
+            "state": "startup-error",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "wrapped-status",
+            "content_height": 323,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "error-collapsed",
+            "content_height": 258,
+            "top_preserved": true
+          }
+        ],
+        "arguments": [
+          "--port",
+          "4000",
+          "--log-level",
+          "info",
+          "--pid-file",
+          "/private/tmp/launcher-test-unused.pid",
+          "--continuation",
+          "auto",
+          "--resize-images-on-limit"
+        ],
+        "saved_preference": "true"
+      },
+      {
+        "states": [
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Starting\u2026",
+            "state": "starting",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-collapsed",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-expanded",
+            "content_height": 367,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "large-counters",
+            "content_height": 412,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "statistics-unavailable",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped-again",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Could not start \u2014 port 4000 may be in use",
+            "state": "startup-error",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "wrapped-status",
+            "content_height": 323,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "error-collapsed",
+            "content_height": 258,
+            "top_preserved": true
+          }
+        ],
+        "arguments": [
+          "--port",
+          "4000",
+          "--log-level",
+          "info",
+          "--pid-file",
+          "/private/tmp/launcher-test-unused.pid",
+          "--continuation",
+          "auto",
+          "--resize-images-on-limit"
+        ],
+        "saved_preference": "false"
+      },
+      {
+        "lifecycle": "close/show/Dock/menu/quit",
+        "passed": true
+      }
+    ],
+    "intel": [
+      {
+        "states": [
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Starting\u2026",
+            "state": "starting",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-collapsed",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-expanded",
+            "content_height": 367,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "large-counters",
+            "content_height": 412,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "statistics-unavailable",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped-again",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Could not start \u2014 port 4000 may be in use",
+            "state": "startup-error",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "wrapped-status",
+            "content_height": 323,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "error-collapsed",
+            "content_height": 258,
+            "top_preserved": true
+          }
+        ],
+        "arguments": [
+          "--port",
+          "4000",
+          "--log-level",
+          "info",
+          "--pid-file",
+          "/private/tmp/launcher-test-unused.pid",
+          "--continuation",
+          "auto",
+          "--resize-images-on-limit"
+        ],
+        "saved_preference": "absent"
+      },
+      {
+        "states": [
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Starting\u2026",
+            "state": "starting",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-collapsed",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-expanded",
+            "content_height": 367,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "large-counters",
+            "content_height": 412,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "statistics-unavailable",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped-again",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Could not start \u2014 port 4000 may be in use",
+            "state": "startup-error",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "wrapped-status",
+            "content_height": 323,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "error-collapsed",
+            "content_height": 258,
+            "top_preserved": true
+          }
+        ],
+        "arguments": [
+          "--port",
+          "4000",
+          "--log-level",
+          "info",
+          "--pid-file",
+          "/private/tmp/launcher-test-unused.pid",
+          "--continuation",
+          "auto",
+          "--resize-images-on-limit"
+        ],
+        "saved_preference": "true"
+      },
+      {
+        "states": [
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Starting\u2026",
+            "state": "starting",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-collapsed",
+            "content_height": 234,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "running-expanded",
+            "content_height": 367,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "large-counters",
+            "content_height": 412,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Running at 127.0.0.1:4000",
+            "state": "statistics-unavailable",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Stopped",
+            "state": "stopped-again",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Could not start \u2014 port 4000 may be in use",
+            "state": "startup-error",
+            "content_height": 299,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "wrapped-status",
+            "content_height": 323,
+            "top_preserved": true
+          },
+          {
+            "bottom_margin": 20,
+            "status": "\u25cf Server did not become ready. This deliberately long diagnostic must wrap without clipping the Start and Stop controls or leaving extra space below the statistics.",
+            "state": "error-collapsed",
+            "content_height": 258,
+            "top_preserved": true
+          }
+        ],
+        "arguments": [
+          "--port",
+          "4000",
+          "--log-level",
+          "info",
+          "--pid-file",
+          "/private/tmp/launcher-test-unused.pid",
+          "--continuation",
+          "auto",
+          "--resize-images-on-limit"
+        ],
+        "saved_preference": "false"
+      },
+      {
+        "lifecycle": "close/show/Dock/menu/quit",
+        "passed": true
+      }
+    ]
+  },
+  "packaged_servers": [
+    {
+      "arch": "arm64",
+      "mock_tls": true,
+      "requests": [
+        {
+          "bytes": 17993855,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": false
+        },
+        {
+          "bytes": 17993854,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": true
+        }
+      ],
+      "stats": {
+        "active_requests": 0,
+        "latest_completed_request_bytes": 19000055,
+        "largest_active_request_bytes": 0,
+        "warnings_10mb": 0,
+        "warnings_12mb": 0,
+        "warnings_15mb": 2,
+        "size_failures": 2,
+        "image_resize_requests": 2,
+        "resized_images": 26,
+        "image_saved_request_bytes": 9812368,
+        "continuation_requests": 0,
+        "full_replay_requests": 2,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 0,
+        "tool_boundary_replays": 2,
+        "saved_request_bytes": 0
+      },
+      "cli_opt_out": true,
+      "conflicting_flags_rejected": true
+    },
+    {
+      "arch": "x86_64",
+      "mock_tls": true,
+      "requests": [
+        {
+          "bytes": 17993855,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": false
+        },
+        {
+          "bytes": 17993854,
+          "sizes": [
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              640,
+              1024
+            ],
+            [
+              800,
+              1280
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ],
+            [
+              2500,
+              4000
+            ]
+          ],
+          "stream": true
+        }
+      ],
+      "stats": {
+        "active_requests": 0,
+        "latest_completed_request_bytes": 19000055,
+        "largest_active_request_bytes": 0,
+        "warnings_10mb": 0,
+        "warnings_12mb": 0,
+        "warnings_15mb": 2,
+        "size_failures": 2,
+        "image_resize_requests": 2,
+        "resized_images": 26,
+        "image_saved_request_bytes": 9812368,
+        "continuation_requests": 0,
+        "full_replay_requests": 2,
+        "continuation_fallbacks": 0,
+        "continuation_cache_entries": 0,
+        "tool_boundary_replays": 2,
+        "saved_request_bytes": 0
+      },
+      "cli_opt_out": true,
+      "conflicting_flags_rejected": true
+    }
+  ],
+  "frozen_source": {
+    "arm64": {
+      "python": "3.13.14",
+      "modules_match": {
+        "__init__": true,
+        "app": true,
+        "cli": true,
+        "image_resize": true,
+        "continuation": true,
+        "request_size": true,
+        "status": true,
+        "transform": true,
+        "server_entry": true,
+        "research_excluded": true
+      },
+      "codecs": {
+        "Pillow native codec": true
+      }
+    },
+    "intel": {
+      "python": "3.12.13",
+      "modules_match": {
+        "__init__": true,
+        "app": true,
+        "cli": true,
+        "image_resize": true,
+        "continuation": true,
+        "request_size": true,
+        "status": true,
+        "transform": true,
+        "server_entry": true,
+        "research_excluded": true
+      },
+      "codecs": {
+        "Pillow native codec": true
+      }
+    }
+  },
+  "clients": {
+    "installed": {
+      "resize": {
+        "client": "codex-cli 0.152.0",
+        "requests": [
+          {
+            "bytes": 17933998,
+            "continued": false
+          },
+          {
+            "bytes": 34793,
+            "continued": true
+          }
+        ],
+        "largest_original_body": 21586178,
+        "first": "completed",
+        "followup": "completed",
+        "stats": {
+          "active_requests": 0,
+          "latest_completed_request_bytes": 34793,
+          "largest_active_request_bytes": 0,
+          "warnings_10mb": 0,
+          "warnings_12mb": 0,
+          "warnings_15mb": 1,
+          "size_failures": 0,
+          "image_resize_requests": 1,
+          "resized_images": 33,
+          "image_saved_request_bytes": 3652180,
+          "continuation_requests": 1,
+          "full_replay_requests": 1,
+          "continuation_fallbacks": 0,
+          "continuation_cache_entries": 1,
+          "tool_boundary_replays": 0,
+          "saved_request_bytes": 21551666
+        }
+      },
+      "compaction": {
+        "client": "codex-cli 0.152.0",
+        "checks": [
+          {
+            "check": "seed-0",
+            "status": "completed"
+          },
+          {
+            "check": "seed-1",
+            "status": "completed"
+          },
+          {
+            "check": "seed-2",
+            "status": "completed"
+          },
+          {
+            "check": "seed-3",
+            "status": "completed"
+          },
+          {
+            "check": "seed-4",
+            "status": "completed"
+          },
+          {
+            "check": "seed-5",
+            "status": "completed"
+          },
+          {
+            "check": "seed-6",
+            "status": "completed"
+          },
+          {
+            "check": "seed-7",
+            "status": "completed"
+          },
+          {
+            "check": "seed-8",
+            "status": "completed"
+          },
+          {
+            "check": "seed-9",
+            "status": "completed"
+          },
+          {
+            "check": "seed-10",
+            "status": "completed"
+          },
+          {
+            "check": "seed-11",
+            "status": "completed"
+          },
+          {
+            "check": "seed-12",
+            "status": "completed"
+          },
+          {
+            "check": "seed-13",
+            "status": "completed"
+          },
+          {
+            "check": "seed-14",
+            "status": "completed"
+          },
+          {
+            "check": "seed-15",
+            "status": "completed"
+          },
+          {
+            "check": "seed-16",
+            "status": "completed"
+          },
+          {
+            "check": "seed-17",
+            "status": "completed"
+          },
+          {
+            "check": "seed-18",
+            "status": "completed"
+          },
+          {
+            "check": "seed-19",
+            "status": "completed"
+          },
+          {
+            "check": "oversized-full-replay",
+            "status": "failed",
+            "error": {
+              "message": "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.",
+              "codexErrorInfo": "contextWindowExceeded",
+              "additionalDetails": null,
+              "misalignment": null
+            }
+          },
+          {
+            "check": "manual-compaction",
+            "completed": true
+          },
+          {
+            "check": "after-compaction",
+            "status": "completed"
+          }
+        ],
+        "largest_measured_body": 19827864,
+        "requests": [
+          {
+            "bytes": 1011286,
+            "continued": false
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007555,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 1007557,
+            "continued": true
+          },
+          {
+            "bytes": 18817420,
+            "continued": false
+          },
+          {
+            "bytes": 102099,
+            "continued": false
+          }
+        ]
+      }
+    },
+    "supported": {
+      "resize": {
+        "client": "codex-cli 0.167.1",
+        "requests": [
+          {
+            "bytes": 17947721,
+            "continued": false
+          },
+          {
+            "bytes": 25369,
+            "continued": true
+          }
+        ],
+        "largest_original_body": 21599901,
+        "first": "completed",
+        "followup": "completed",
+        "stats": {
+          "active_requests": 0,
+          "latest_completed_request_bytes": 25369,
+          "largest_active_request_bytes": 0,
+          "warnings_10mb": 0,
+          "warnings_12mb": 0,
+          "warnings_15mb": 1,
+          "size_failures": 0,
+          "image_resize_requests": 1,
+          "resized_images": 33,
+          "image_saved_request_bytes": 3652180,
+          "continuation_requests": 1,
+          "full_replay_requests": 1,
+          "continuation_fallbacks": 0,
+          "continuation_cache_entries": 1,
+          "tool_boundary_replays": 0,
+          "saved_request_bytes": 21574830
+        }
+      },
+      "compaction": {
+        "client": "codex-cli 0.167.1",
+        "checks": [
+          {
+            "check": "seed-0",
+            "status": "completed"
+          },
+          {
+            "check": "seed-1",
+            "status": "completed"
+          },
+          {
+            "check": "seed-2",
+            "status": "completed"
+          },
+          {
+            "check": "seed-3",
+            "status": "completed"
+          },
+          {
+            "check": "seed-4",
+            "status": "completed"
+          },
+          {
+            "check": "seed-5",
+            "status": "completed"
+          },
+          {
+            "check": "seed-6",
+            "status": "completed"
+          },
+          {
+            "check": "seed-7",
+            "status": "completed"
+          },
+          {
+            "check": "seed-8",
+            "status": "completed"
+          },
+          {
+            "check": "seed-9",
+            "status": "completed"
+          },
+          {
+            "check": "seed-10",
+            "status": "completed"
+          },
+          {
+            "check": "seed-11",
+            "status": "completed"
+          },
+          {
+            "check": "seed-12",
+            "status": "completed"
+          },
+          {
+            "check": "seed-13",
+            "status": "completed"
+          },
+          {
+            "check": "seed-14",
+            "status": "completed"
+          },
+          {
+            "check": "seed-15",
+            "status": "completed"
+          },
+          {
+            "check": "seed-16",
+            "status": "completed"
+          },
+          {
+            "check": "seed-17",
+            "status": "completed"
+          },
+          {
+            "check": "seed-18",
+            "status": "completed"
+          },
+          {
+            "check": "seed-19",
+            "status": "completed"
+          },
+          {
+            "check": "oversized-full-replay",
+            "status": "failed",
+            "error": {
+              "message": "Codex ran out of room in the model's context window. Start a new thread or clear earlier history before retrying.",
+              "codexErrorInfo": "contextWindowExceeded",
+              "additionalDetails": null,
+              "misalignment": null
+            }
+          },
+          {
+            "check": "manual-compaction",
+            "completed": true
+          },
+          {
+            "check": "after-compaction",
+            "status": "completed"
+          }
+        ],
+        "largest_measured_body": 19840156,
+        "requests": [
+          {
+            "bytes": 1022741,
+            "continued": false
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015408,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 1015410,
+            "continued": true
+          },
+          {
+            "bytes": 18817904,
+            "continued": false
+          },
+          {
+            "bytes": 113603,
+            "continued": false
+          }
+        ]
+      }
+    }
+  },
+  "distribution": [
+    {
+      "arch": "arm64",
+      "notarized": true,
+      "stapled": true,
+      "strict_signature": true,
+      "gatekeeper": "Notarized Developer ID"
+    },
+    {
+      "arch": "x86_64",
+      "notarized": true,
+      "stapled": true,
+      "strict_signature": true,
+      "gatekeeper": "Notarized Developer ID"
+    }
+  ],
+  "notarization": {
+    "arm64": "08ff072c-3615-4ec4-a6ac-79445b7c9e76",
+    "x86_64": "899ea453-a488-4187-93c0-7e6f13d78277"
+  }
+}

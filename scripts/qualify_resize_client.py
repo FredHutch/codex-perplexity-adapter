@@ -21,7 +21,7 @@ from scripts.qualify_app_server import RPC
 from scripts.work_budget_fixtures import many_images
 import base64
 
-OUT = Path(__file__).resolve().parents[1] / "build/qualification-0.1.15"
+OUT = Path(__file__).resolve().parents[1] / "build/qualification-0.1.16"
 
 def run(binary):
     OUT.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ def run(binary):
                            "content": [{"type": "output_text", "text": "RESIZE_MARKER_724", "annotations": []}]}],
                "usage": {"input_tokens": 100, "output_tokens": 10, "total_tokens": 110}}
         return httpx.Response(200, text="data: " + json.dumps({"type": "response.completed", "response": obj}) + "\n\n", headers={"content-type": "text/event-stream"})
-    app = create_app(Settings(api_key="synthetic", local_token="qualification-token", resize_images_on_limit=True), httpx.MockTransport(provider))
+    app = create_app(Settings(api_key="synthetic", local_token="qualification-token"), httpx.MockTransport(provider))
     sock = socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]
     server = uvicorn.Server(uvicorn.Config(app, log_level="error", access_log=False))
     thread = threading.Thread(target=lambda: server.run(sockets=[sock]), daemon=True); thread.start()
@@ -54,7 +54,7 @@ def run(binary):
                 process = subprocess.Popen([binary, "app-server", "--stdio"], env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, bufsize=1)
                 rpc = RPC(process)
                 try:
-                    rpc.call("initialize", {"clientInfo": {"name": "resize-test", "version": "0.1.15"}}); rpc.send("initialized")
+                    rpc.call("initialize", {"clientInfo": {"name": "resize-test", "version": "0.1.16"}}); rpc.send("initialized")
                     ident = rpc.call("thread/start", {"cwd": str(root), "approvalPolicy": "never", "sandbox": "read-only"})["thread"]["id"]
                     urls = many_images(unique=150, count=150)["input"][-1]["output"]
                     paths = []

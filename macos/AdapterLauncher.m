@@ -22,12 +22,19 @@
 
 @end
 
-@interface AppDelegate : NSObject <NSApplicationDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property(strong) NSWindow *window;
 @property(strong) NSSecureTextField *keyField;
 @property(strong) NSButton *startButton;
 @property(strong) NSButton *stopButton;
-@property(strong) NSButton *resizeCheckbox;
+@property(strong) NSButton *detailsButton;
+@property(strong) NSStackView *detailsStack;
+@property(strong) NSStatusItem *statusItem;
+@property(strong) NSMenuItem *menuStatus;
+@property(strong) NSMenuItem *menuStart;
+@property(strong) NSMenuItem *menuStop;
+@property(strong) NSURLSessionDataTask *budgetRequest;
+@property NSUInteger budgetGeneration;
 @property(strong) NSTextField *statusLabel;
 @property(strong) NSStackView *contentStack;
 @property(strong) NSArray<NSTextField *> *budgetLabels;
@@ -50,12 +57,13 @@
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [self buildApplicationMenu];
-    [NSUserDefaults.standardUserDefaults registerDefaults:@{@"ResizeImagesOnLimit": @YES}];
+    [self buildStatusMenu];
     [self buildWindow];
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
     [self.window makeFirstResponder:self.keyField];
+    [self updateBudgetPolling];
 }
 
 - (void)buildApplicationMenu {
@@ -66,7 +74,8 @@
     NSMenu *appMenu = [[NSMenu alloc] initWithTitle:@"Codex–Perplexity Adapter"];
     [appMenu addItemWithTitle:@"About Codex–Perplexity Adapter" action:@selector(showAbout:) keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
-    [appMenu addItemWithTitle:@"Hide Codex–Perplexity Adapter" action:@selector(hide:) keyEquivalent:@"h"];
+    NSMenuItem *hide = [appMenu addItemWithTitle:@"Hide to Menu Bar" action:@selector(hideToMenuBar:) keyEquivalent:@"h"];
+    hide.target = self;
     [appMenu addItem:[NSMenuItem separatorItem]];
     [appMenu addItemWithTitle:@"Quit Codex–Perplexity Adapter" action:@selector(terminate:) keyEquivalent:@"q"];
     appMenuItem.submenu = appMenu;
@@ -85,6 +94,7 @@
     NSMenuItem *windowMenuItem = [[NSMenuItem alloc] init];
     [mainMenu addItem:windowMenuItem];
     NSMenu *windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+    [windowMenu addItemWithTitle:@"Close Window" action:@selector(performClose:) keyEquivalent:@"w"];
     [windowMenu addItemWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
     windowMenuItem.submenu = windowMenu;
     NSApp.windowsMenu = windowMenu;
@@ -92,7 +102,73 @@
     NSApp.mainMenu = mainMenu;
 }
 
+- (void)buildStatusMenu {
+    self.statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:NSVariableStatusItemLength];
+    self.statusItem.button.image = [NSImage imageWithSystemSymbolName:@"arrow.left.arrow.right" accessibilityDescription:@"Codex–Perplexity Adapter"];
+    self.statusItem.button.accessibilityLabel = @"Codex–Perplexity Adapter";
+    NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Adapter"];
+    menu.autoenablesItems = NO;
+    self.menuStatus = [menu addItemWithTitle:@"Stopped" action:nil keyEquivalent:@""];
+    self.menuStatus.enabled = NO;
+    [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *show = [menu addItemWithTitle:@"Show Adapter" action:@selector(showAdapter:) keyEquivalent:@""];
+    show.target = self;
+    self.menuStart = [menu addItemWithTitle:@"Start Adapter" action:@selector(startFromMenu:) keyEquivalent:@""];
+    self.menuStart.target = self;
+    self.menuStop = [menu addItemWithTitle:@"Stop Adapter" action:@selector(stopClicked:) keyEquivalent:@""];
+    self.menuStop.target = self;
+    [menu addItem:[NSMenuItem separatorItem]];
+    NSMenuItem *about = [menu addItemWithTitle:@"About" action:@selector(showAbout:) keyEquivalent:@""];
+    about.target = self;
+    NSMenuItem *quit = [menu addItemWithTitle:@"Quit" action:@selector(terminate:) keyEquivalent:@"q"];
+    quit.target = NSApp;
+    self.statusItem.menu = menu;
+    [self updateStatusMenu];
+}
+
+- (void)updateStatusMenu {
+    self.menuStatus.title = self.statusLabel.stringValue ?: @"Stopped";
+    self.menuStart.enabled = self.serverTask == nil;
+    self.menuStop.enabled = self.serverTask != nil;
+    self.statusItem.button.toolTip = [NSString stringWithFormat:@"Codex–Perplexity Adapter — %@", self.menuStatus.title];
+}
+
+- (void)hideToMenuBar:(id)sender {
+    [self.window orderOut:nil];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    [self updateBudgetPolling];
+}
+
+- (BOOL)windowShouldClose:(NSWindow *)sender {
+    [self hideToMenuBar:nil];
+    return NO;
+}
+
+- (void)showAdapter:(id)sender {
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    [self.window deminiaturize:nil];
+    [self.window makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+    [self updateBudgetPolling];
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)visible {
+    [self showAdapter:nil];
+    return YES;
+}
+
+- (void)startFromMenu:(id)sender {
+    [self showAdapter:nil];
+    [self startClicked:sender];
+}
+
+- (void)windowDidMiniaturize:(NSNotification *)notification { [self updateBudgetPolling]; }
+- (void)windowDidDeminiaturize:(NSNotification *)notification { [self updateBudgetPolling]; }
+- (void)applicationDidHide:(NSNotification *)notification { [self updateBudgetPolling]; }
+- (void)applicationDidUnhide:(NSNotification *)notification { [self updateBudgetPolling]; }
+
 - (void)showAbout:(id)sender {
+    [self showAdapter:nil];
     NSDictionary *info = NSBundle.mainBundle.infoDictionary;
     NSString *version = info[@"CFBundleShortVersionString"] ?: @"Unknown";
     NSArray<NSString *> *models = info[@"SupportedModelAliases"];
@@ -107,11 +183,12 @@
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
-    return YES;
+    return NO;
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
     [self stopServer];
+    [NSStatusBar.systemStatusBar removeStatusItem:self.statusItem];
 }
 
 - (NSTextField *)label:(NSString *)text {
@@ -129,6 +206,7 @@
                       defer:NO];
     self.window.title = [NSBundle.mainBundle.infoDictionary[@"AdapterTestCandidate"] boolValue] ? @"Codex–Perplexity Adapter Test" : @"Codex–Perplexity Adapter";
     self.window.releasedWhenClosed = NO;
+    self.window.delegate = self;
 
     NSView *content = self.window.contentView;
     NSTextField *title = [self label:@"Codex–Perplexity Adapter"];
@@ -181,9 +259,16 @@
         [button setContentCompressionResistancePriority:NSLayoutPriorityRequired forOrientation:NSLayoutConstraintOrientationHorizontal];
     }
 
-    self.resizeCheckbox = [NSButton checkboxWithTitle:@"Resize images in oversized requests" target:self action:@selector(resizeChanged:)];
-    self.resizeCheckbox.state = [NSUserDefaults.standardUserDefaults boolForKey:@"ResizeImagesOnLimit"] ? NSControlStateValueOn : NSControlStateValueOff;
-    NSTextField *resizeHelp = [NSTextField wrappingLabelWithString:@"Shrinks older images to fit; small text may become harder to read."];
+    self.detailsButton = [NSButton buttonWithTitle:@"Details" target:self action:@selector(toggleDetails:)];
+    [self.detailsButton setButtonType:NSButtonTypePushOnPushOff];
+    self.detailsButton.bordered = NO;
+    self.detailsButton.imagePosition = NSImageLeft;
+    self.detailsButton.image = [NSImage imageWithSystemSymbolName:@"chevron.right" accessibilityDescription:nil];
+    self.detailsButton.accessibilityRole = NSAccessibilityDisclosureTriangleRole;
+    self.detailsButton.accessibilityLabel = @"Details";
+    self.detailsButton.accessibilityHelp = @"Show or hide adapter statistics and image resizing information.";
+    self.detailsButton.accessibilityExpanded = NO;
+    NSTextField *resizeHelp = [NSTextField wrappingLabelWithString:@"Oversized requests automatically shrink older images to fit; small text may become harder to read."];
     resizeHelp.font = [NSFont systemFontOfSize:12];
     resizeHelp.textColor = NSColor.secondaryLabelColor;
     [self.wrappingLabels addObject:resizeHelp];
@@ -201,7 +286,13 @@
     statistics.alignment = NSLayoutAttributeLeading;
     statistics.spacing = 2;
     statistics.detachesHiddenViews = YES;
-    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, self.resizeCheckbox, resizeHelp, buttonRow, statistics]];
+    self.detailsStack = [NSStackView stackViewWithViews:@[statistics, resizeHelp]];
+    self.detailsStack.orientation = NSUserInterfaceLayoutOrientationVertical;
+    self.detailsStack.alignment = NSLayoutAttributeLeading;
+    self.detailsStack.spacing = 10;
+    self.detailsStack.hidden = YES;
+    NSStackView *stack = [NSStackView stackViewWithViews:@[title, description, keyLabel, keyRow, buttonRow, self.detailsButton, self.detailsStack]];
+    stack.detachesHiddenViews = YES;
     self.contentStack = stack;
     stack.orientation = NSUserInterfaceLayoutOrientationVertical;
     stack.alignment = NSLayoutAttributeLeading;
@@ -216,6 +307,7 @@
         [keyRow.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [buttonRow.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [statistics.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [self.detailsStack.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [self.keyField.heightAnchor constraintEqualToConstant:28],
         [description.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [resizeHelp.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
@@ -257,6 +349,7 @@
     self.statusLabel.stringValue = text;
     self.statusLabel.textColor = color;
     [self fitWindowToContent];
+    [self updateStatusMenu];
 }
 
 - (void)displayBudget:(NSDictionary *)values {
@@ -270,8 +363,13 @@
     ]];
 }
 
-- (void)resizeChanged:(id)sender {
-    [NSUserDefaults.standardUserDefaults setBool:self.resizeCheckbox.state == NSControlStateValueOn forKey:@"ResizeImagesOnLimit"];
+- (void)toggleDetails:(id)sender {
+    BOOL expanded = self.detailsButton.state == NSControlStateValueOn;
+    self.detailsStack.hidden = !expanded;
+    self.detailsButton.accessibilityExpanded = expanded;
+    self.detailsButton.image = [NSImage imageWithSystemSymbolName:expanded ? @"chevron.down" : @"chevron.right" accessibilityDescription:nil];
+    [self fitWindowToContent];
+    [self updateBudgetPolling];
 }
 
 - (void)pasteKeyClicked:(id)sender {
@@ -287,8 +385,7 @@
 
 - (NSArray<NSString *> *)serverArguments {
     NSMutableArray *arguments = [@[@"--port", [NSString stringWithFormat:@"%ld", (long)[self serverPort]], @"--log-level", @"info",
-             @"--pid-file", self.pidURL.path, @"--continuation", @"auto"] mutableCopy];
-    if (self.resizeCheckbox.state == NSControlStateValueOn) [arguments addObject:@"--resize-images-on-limit"];
+             @"--pid-file", self.pidURL.path, @"--continuation", @"auto", @"--resize-images-on-limit"] mutableCopy];
     return arguments;
 }
 
@@ -376,12 +473,14 @@
 }
 
 - (void)stopServer {
+    [self stopBudgetPolling];
     [self stopRecordedServer];
     if (self.serverTask.running) {
         [self.serverTask terminate];
         [self.serverTask waitUntilExit];
     }
     self.serverTask = nil;
+    [self updateStatusMenu];
 }
 
 - (void)stopRecordedServer {
@@ -402,59 +501,90 @@
 }
 
 - (void)setRunning:(BOOL)running {
-    [self.budgetTimer invalidate];
-    self.budgetTimer = nil;
-    if (running) {
-        __weak typeof(self) weakSelf = self;
-        self.budgetTimer = [NSTimer scheduledTimerWithTimeInterval:3 repeats:YES block:^(NSTimer *timer) {
-            [weakSelf refreshBudget];
-        }];
-    }
+    [self stopBudgetPolling];
     [self setBudgetRows:@[running ? @"Fetching adapter-wide statistics…" : @"Activity and request statistics appear while running."]];
     self.startButton.enabled = !running;
     self.stopButton.enabled = running;
     self.keyField.enabled = !running;
-    self.resizeCheckbox.enabled = !running;
     [self setConnectionStatus:running ? @"● Starting…" : @"● Stopped" color:running ? NSColor.systemOrangeColor : NSColor.secondaryLabelColor];
+    [self updateBudgetPolling];
+}
+
+- (BOOL)shouldPollBudget {
+    return self.window.visible && !self.window.miniaturized && !NSApp.hidden &&
+           self.detailsButton.state == NSControlStateValueOn && self.serverTask.running;
+}
+
+- (void)stopBudgetPolling {
+    self.budgetGeneration++;
+    [self.budgetTimer invalidate];
+    self.budgetTimer = nil;
+    [self.budgetRequest cancel];
+    self.budgetRequest = nil;
+}
+
+- (void)updateBudgetPolling {
+    if (![self shouldPollBudget]) {
+        [self stopBudgetPolling];
+        return;
+    }
+    if (self.budgetTimer != nil) return;
+    __weak typeof(self) weakSelf = self;
+    self.budgetTimer = [NSTimer scheduledTimerWithTimeInterval:3 repeats:YES block:^(NSTimer *timer) {
+        [weakSelf refreshBudget];
+    }];
+    [self refreshBudget];
+}
+
+- (BOOL)acceptBudgetGeneration:(NSUInteger)generation server:(NSTask *)server {
+    return generation == self.budgetGeneration && server == self.serverTask && [self shouldPollBudget];
 }
 
 - (void)refreshBudget {
-    if (!self.serverTask.running) return;
+    if (![self shouldPollBudget] || self.budgetRequest != nil) return;
+    NSUInteger generation = self.budgetGeneration;
+    NSTask *server = self.serverTask;
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://127.0.0.1:%ld/v1/adapter/status", (long)[self serverPort]]]];
     request.timeoutInterval = 2;
     request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
     NSString *token = NSProcessInfo.processInfo.environment[@"ADAPTER_LOCAL_TOKEN"] ?: @"local-adapter-token";
     [request setValue:[@"Bearer " stringByAppendingString:token] forHTTPHeaderField:@"Authorization"];
     __weak typeof(self) weakSelf = self;
-    [[[NSURLSession sharedSession] dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    self.budgetRequest = [NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         NSDictionary *values = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
         dispatch_async(dispatch_get_main_queue(), ^{
             typeof(self) self = weakSelf;
-            if (!self || !self.serverTask.running) return;
+            if (!self || ![self acceptBudgetGeneration:generation server:server]) return;
+            self.budgetRequest = nil;
             if ([(NSHTTPURLResponse *)response statusCode] != 200 || ![values isKindOfClass:NSDictionary.class]) {
                 [self setBudgetRows:@[@"Adapter-wide statistics unavailable."]];
                 return;
             }
             [self displayBudget:values];
         });
-    }] resume];
+    }];
+    [self.budgetRequest resume];
 }
 
 - (void)verifyHealth:(NSInteger)attempt {
-    if (!self.serverTask.running) return;
+    [self verifyHealth:attempt server:self.serverTask];
+}
+
+- (void)verifyHealth:(NSInteger)attempt server:(NSTask *)server {
+    if (!server.running || self.serverTask != server) return;
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"http://127.0.0.1:%ld/health", (long)[self serverPort]]]];
     request.timeoutInterval = 1;
     __weak typeof(self) weakSelf = self;
     [[NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             typeof(self) self = weakSelf;
-            if (self == nil || !self.serverTask.running) return;
+            if (self == nil || self.serverTask != server || !server.running) return;
             NSInteger status = [(NSHTTPURLResponse *)response statusCode];
             if (status == 200 && data != nil) {
                 [self setConnectionStatus:[NSString stringWithFormat:@"● Running at 127.0.0.1:%ld", (long)[self serverPort]] color:NSColor.systemGreenColor];
             } else if (attempt < 12) {
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    [self verifyHealth:attempt + 1];
+                    [self verifyHealth:attempt + 1 server:server];
                 });
             } else {
                 [self setConnectionStatus:@"● Server did not become ready" color:NSColor.systemRedColor];

@@ -89,7 +89,7 @@ class Settings:
     local_token: str = "local-adapter-token"
     timeout_seconds: float = 300.0
     continuation: str = "auto"
-    resize_images_on_limit: bool = False
+    resize_images_on_limit: bool = True
 
 
 class ContinuationCapture:

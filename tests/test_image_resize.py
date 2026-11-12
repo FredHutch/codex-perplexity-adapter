@@ -49,7 +49,11 @@ class ResizeTests(unittest.TestCase):
         cls.png = fixture("PNG")
 
     def test_defaults_and_exact_guard_untouched(self):
-        self.assertFalse(build_parser().parse_args([]).resize_images_on_limit)
+        self.assertTrue(build_parser().parse_args([]).resize_images_on_limit)
+        self.assertTrue(Settings(api_key="synthetic").resize_images_on_limit)
+        self.assertFalse(build_parser().parse_args(["--no-resize-images-on-limit"]).resize_images_on_limit)
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(["--resize-images-on-limit", "--no-resize-images-on-limit"])
         self.assertTrue(build_parser().parse_args(["--resize-images-on-limit"]).resize_images_on_limit)
         for size in (18_000_001, 18_999_999, 19_000_000, 19_000_001):
             p = payload(self.jpeg, metadata={"padding": "é"})
