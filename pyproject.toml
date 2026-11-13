@@ -13,7 +13,7 @@ authors = [{name = "Andrew Portuguese"}]
 dependencies = [
   "Pillow==12.2.0",
   "certifi==2026.10.18",
-  "fastapi==0.141.1",
+  "fastapi==0.162.4",
   "httpx==0.28.1",
   "uvicorn==0.52.1",
 ]
