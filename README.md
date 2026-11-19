@@ -24,7 +24,7 @@ The current apps are Developer ID signed, notarized by Apple, and include staple
 Use Codex CLI 0.156.0 or newer, or a corresponding current Codex app or IDE extension. Add these settings to `~/.codex/config.toml`, keeping unrelated existing settings:
 
 ```toml
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_provider = "perplexity_adapter"
 model_reasoning_effort = "medium"
 
@@ -40,11 +40,11 @@ Then start Codex. The adapter must remain running while Codex is in use.
 
 ## Supported models
 
-Choose `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, or `gpt-5.6-luna` using the model setting above. The aliases `gpt-6.1` and `gpt-5.6` select `gpt-6.1-sol` and `gpt-5.6-sol`, respectively.
+Choose `gpt-6.2-sol`, `gpt-6.2-astra`, `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, or `gpt-5.6-luna` using the model setting above. The aliases `gpt-6.1` and `gpt-5.6` select `gpt-6.1-sol` and `gpt-5.6-sol`, respectively.
 
 ## Current version
 
-**Current version: v0.1.16.** Conversation reuse and oversized-image recovery are automatic. Requests remain limited to 19 MB. Open **Details** to see activity and savings; it starts collapsed.
+**Current version: v0.1.17.** Adds `gpt-6.2-sol` and `gpt-6.2-astra`. Conversation reuse and oversized-image recovery are automatic. Requests remain limited to 19 MB. Open **Details** to see activity and savings; it starts collapsed.
 
 Resizing can make small text, decimal points and identifiers harder to read. For precision form review, run the CLI with `--no-resize-images-on-limit` to preserve original detail. If a request still exceeds the limit, use `/compact` and retry.
 

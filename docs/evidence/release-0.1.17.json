@@ -1,0 +1,354 @@
+{
+  "version": "0.1.17",
+  "date": "2026-11-19",
+  "base_commit": "664f8c0e39080df2422b55a1c3b2719b8c9e9f8e",
+  "actions_enabled": false,
+  "installed_app_unchanged": true,
+  "python": {
+    "3.10.20": {
+      "returncode": 0,
+      "seconds": 35.68,
+      "summary": [
+        "----------------------------------------------------------------------",
+        "Ran 141 tests in 35.301s",
+        "",
+        "OK"
+      ]
+    },
+    "3.12.13": {
+      "returncode": 0,
+      "seconds": 35.88,
+      "summary": [
+        "----------------------------------------------------------------------",
+        "Ran 141 tests in 35.531s",
+        "",
+        "OK"
+      ]
+    },
+    "3.13.14": {
+      "returncode": 0,
+      "seconds": 35.92,
+      "summary": [
+        "----------------------------------------------------------------------",
+        "Ran 141 tests in 35.530s",
+        "",
+        "OK"
+      ]
+    },
+    "3.14.6": {
+      "returncode": 0,
+      "seconds": 36.98,
+      "summary": [
+        "----------------------------------------------------------------------",
+        "Ran 141 tests in 36.665s",
+        "",
+        "OK"
+      ]
+    },
+    "intel-3.12.13": {
+      "returncode": 0,
+      "seconds": 55.57,
+      "summary": [
+        "----------------------------------------------------------------------",
+        "Ran 141 tests in 55.109s",
+        "",
+        "OK"
+      ]
+    }
+  },
+  "client_matrix": [
+    {
+      "client": "installed",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_app_server",
+      "returncode": 0,
+      "seconds": 0.74
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_clients",
+      "returncode": 0,
+      "seconds": 0.95
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_compaction",
+      "returncode": 0,
+      "seconds": 4.31
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_clients",
+      "returncode": 0,
+      "seconds": 0.73
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_app_server",
+      "returncode": 0,
+      "seconds": 0.62
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_resize_client",
+      "returncode": 0,
+      "seconds": 16.05
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_compaction",
+      "returncode": 0,
+      "seconds": 4.33
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_clients",
+      "returncode": 0,
+      "seconds": 0.62
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_app_server",
+      "returncode": 0,
+      "seconds": 0.61
+    },
+    {
+      "client": "installed",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_resize_client",
+      "returncode": 0,
+      "seconds": 15.93
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_compaction",
+      "returncode": 0,
+      "seconds": 4.56
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_clients",
+      "returncode": 0,
+      "seconds": 0.78
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_app_server",
+      "returncode": 0,
+      "seconds": 0.61
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-sol",
+      "helper": "qualify_resize_client",
+      "returncode": 0,
+      "seconds": 16.88
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_compaction",
+      "returncode": 0,
+      "seconds": 4.04
+    },
+    {
+      "client": "supported",
+      "model": "gpt-6.2-astra",
+      "helper": "qualify_resize_client",
+      "returncode": 0,
+      "seconds": 16.03
+    }
+  ],
+  "native": {
+    "arm64": {
+      "returncode": 0,
+      "stderr": "",
+      "about": {
+        "about": "0.1.17 and both GPT-6.2 models",
+        "passed": true
+      }
+    },
+    "x86_64": {
+      "returncode": 0,
+      "stderr": "",
+      "about": {
+        "about": "0.1.17 and both GPT-6.2 models",
+        "passed": true
+      }
+    }
+  },
+  "live": {
+    "models": [
+      "gpt-6.2-sol",
+      "gpt-6.2-astra"
+    ],
+    "checks": [
+      {
+        "model": "gpt-6.2-sol",
+        "check": "json",
+        "stream": false,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 1.884,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true
+      },
+      {
+        "model": "gpt-6.2-sol",
+        "check": "streaming",
+        "stream": true,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 1.642,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true
+      },
+      {
+        "model": "gpt-6.2-sol",
+        "check": "tool-dispatch",
+        "stream": true,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 1.773,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "tool_dispatched": true
+      },
+      {
+        "model": "gpt-6.2-sol",
+        "check": "tool-result",
+        "stream": false,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 2.035,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true
+      },
+      {
+        "model": "gpt-6.2-sol",
+        "check": "tool-followup",
+        "stream": true,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 2.189,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true,
+        "continuation_used": true
+      },
+      {
+        "model": "gpt-6.2-sol",
+        "check": "image",
+        "stream": false,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 1.937,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "color_received": true
+      },
+      {
+        "model": "gpt-6.2-astra",
+        "check": "json",
+        "stream": false,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 2.552,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true
+      },
+      {
+        "model": "gpt-6.2-astra",
+        "check": "streaming",
+        "stream": true,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 3.724,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true
+      },
+      {
+        "model": "gpt-6.2-astra",
+        "check": "tool-dispatch",
+        "stream": true,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 2.113,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "tool_dispatched": true
+      },
+      {
+        "model": "gpt-6.2-astra",
+        "check": "tool-result",
+        "stream": false,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 2.638,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true
+      },
+      {
+        "model": "gpt-6.2-astra",
+        "check": "tool-followup",
+        "stream": true,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 2.871,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "marker_received": true,
+        "continuation_used": true
+      },
+      {
+        "model": "gpt-6.2-astra",
+        "check": "image",
+        "stream": false,
+        "http_status": 200,
+        "status": "completed",
+        "seconds": 3.17,
+        "attempts": 1,
+        "error_type": null,
+        "error_code": null,
+        "color_received": true
+      }
+    ],
+    "budget_ceiling": 5.0,
+    "budget": {
+      "attempts": 13,
+      "accounted_usd": 0.752664,
+      "reported_usd": 0.00448,
+      "unknown_cost_attempts": 7
+    },
+    "passed": true
+  },
+  "distribution_results_url": "https://github.com/FredHutch/codex-perplexity-adapter/releases/download/v0.1.17/verification-v0.1.17.json"
+}

@@ -1,5 +1,6 @@
 """Synthetic actual-client tool, follow-up and compaction qualification."""
 import json
+import httpx
 import os
 import queue
 import socket
@@ -64,10 +65,43 @@ class RPC:
         return result['result']
 
 
-def run(binary):
+def run(binary, model="gpt-6.1-sol", output_dir=None, live=False):
+    directory = Path(output_dir) if output_dir is not None else DIRECTORY
+    directory.mkdir(parents=True, exist_ok=True)
     seen = []
-    meter = MeteredTransport(Budget())
-    app = create_app(Settings(api_key='unused-local-relay', local_token='qualification-token', timeout_seconds=60), meter)
+    mock_seen = []
+    async def provider(request):
+        payload = json.loads(request.content)
+        mock_seen.append(payload)
+        names = [tool.get("name", "") for tool in payload.get("tools", [])]
+        tool = next((n for n in names if n.endswith("exec_command") or n.endswith("shell_command") or n == "shell" or n == "functions__exec"), None)
+        marker = "DESKTOP_ISOLATED_137"
+        if len(mock_seen) == 1 and tool:
+            if tool == "functions__exec":
+                arguments = {"content": 'text(await tools.exec_command({cmd:"printf DESKTOP_ISOLATED_137",max_output_tokens:50}));'}
+            elif tool.endswith("exec_command"):
+                arguments = {"cmd": "printf " + marker, "max_output_tokens": 50}
+            elif tool.endswith("shell_command"):
+                arguments = {"command": "printf " + marker}
+            else:
+                arguments = {"command": ["/bin/zsh", "-c", "printf " + marker]}
+            output = [{"type": "function_call", "id": "fc_mock", "call_id": "call_mock",
+                       "name": tool, "arguments": json.dumps(arguments), "status": "completed"}]
+        else:
+            output = [{"type": "message", "role": "assistant", "id": "msg_mock", "phase": "final_answer",
+                       "content": [{"type": "output_text", "text": marker, "annotations": []}]}]
+        response = {"id": "resp_mock_" + str(len(mock_seen)), "object": "response", "status": "completed",
+                    "output": output, "usage": {"input_tokens": 100, "output_tokens": 10, "total_tokens": 110}}
+        events = [{"type": "response.created", "response": {**response, "status": "in_progress", "output": []}}]
+        for index, item in enumerate(output):
+            events += [{"type": "response.output_item.added", "output_index": index,
+                        "item": {**item, "arguments": ""} if item["type"] == "function_call" else item},
+                       {"type": "response.output_item.done", "output_index": index, "item": item}]
+        events.append({"type": "response.completed", "response": response})
+        return httpx.Response(200, text="".join("data: " + json.dumps(e) + "\n\n" for e in events),
+                              headers={"content-type": "text/event-stream"})
+    meter = MeteredTransport(Budget()) if live else httpx.MockTransport(provider)
+    app = create_app(Settings(api_key=os.environ['PERPLEXITY_API_KEY'] if live else 'synthetic-unused', local_token='qualification-token', timeout_seconds=60), meter)
     class Bounded:
         async def __call__(self, scope, receive, send):
             if scope.get('path') != '/v1/responses':
@@ -97,13 +131,13 @@ def run(binary):
     worker.start()
     while not server.started:
         time.sleep(.01)
-    report = {'checks': []}
+    report = {'model': model, 'provider': 'live' if live else 'mock', 'checks': []}
     try:
         with tempfile.TemporaryDirectory(prefix='codex-013-appserver-') as folder:
             root = Path(folder)
             config_home = root / 'codex-home'
             config_home.mkdir()
-            (config_home / 'config.toml').write_text(f'''model="gpt-6.1-sol"
+            (config_home / 'config.toml').write_text(f'''model="{model}"
 model_provider="probe"
 model_reasoning_effort="low"
 web_search="disabled"
@@ -123,22 +157,22 @@ base_url="http://127.0.0.1:{port}/v1"
                     rpc = RPC(process)
                     rpc.call('initialize', {'clientInfo': {'name': 'adapter-qualification', 'version': '0.1.13'}, 'capabilities': {'experimentalApi': True}})
                     rpc.send('initialized')
-                    result = rpc.call('thread/start', {'cwd': str(root), 'model': 'gpt-6.1-sol', 'modelProvider': 'probe', 'approvalPolicy': 'never', 'sandbox': 'read-only', 'baseInstructions': 'Follow synthetic test requests precisely. Use only the requested shell command. Keep responses short.', 'config': {'model_reasoning_effort': 'low'}})
+                    result = rpc.call('thread/start', {'cwd': str(root), 'model': model, 'modelProvider': 'probe', 'approvalPolicy': 'never', 'sandbox': 'read-only', 'baseInstructions': 'Follow synthetic test requests precisely. Use only the requested shell command. Keep responses short.', 'config': {'model_reasoning_effort': 'low'}})
                     thread = result['thread']['id']
                     for label, prompt in [('tool-loop', 'Run a shell command that prints DESKTOP_ISOLATED_137, then repeat exactly its output.'), ('followup', 'Without using tools, repeat the result from the preceding command.')]:
                         start = len(rpc.pending)
-                        before = len(meter.records)
+                        before = len(meter.records if live else mock_seen)
                         rpc.call('turn/start', {'threadId': thread, 'input': [{'type': 'text', 'text': prompt}]})
                         done = rpc.until(lambda event: event.get('method') == 'turn/completed')
                         recent = rpc.pending[start:]
-                        report['checks'].append({'check': label, 'status': done.get('params', {}).get('turn', {}).get('status'), 'marker_received': 'DESKTOP_ISOLATED_137' in json.dumps(recent), 'provider_requests': len(meter.records)-before, 'stats': app.state.continuation.snapshot()})
+                        report['checks'].append({'check': label, 'status': done.get('params', {}).get('turn', {}).get('status'), 'marker_received': 'DESKTOP_ISOLATED_137' in json.dumps(recent), 'provider_requests': len(meter.records if live else mock_seen)-before, 'stats': app.state.continuation.snapshot()})
                         print(json.dumps(report['checks'][-1]), flush=True)
-                    before = len(meter.records)
+                    before = len(meter.records if live else mock_seen)
                     start = len(rpc.pending)
                     rpc.call('thread/compact/start', {'threadId': thread})
                     rpc.until(lambda event: event.get('method') == 'item/completed' and event.get('params', {}).get('item', {}).get('type') == 'contextCompaction')
                     rpc.until(lambda event: event.get('method') == 'turn/completed')
-                    report['checks'].append({'check': 'manual-client-compaction', 'completed': True, 'provider_requests': len(meter.records)-before})
+                    report['checks'].append({'check': 'manual-client-compaction', 'completed': True, 'provider_requests': len(meter.records if live else mock_seen)-before})
                     rpc.call('turn/start', {'threadId': thread, 'input': [{'type': 'text', 'text': 'Without tools, repeat the synthetic command result retained in the summary.'}]})
                     start = len(rpc.pending)
                     done = rpc.until(lambda event: event.get('method') == 'turn/completed')
@@ -153,7 +187,7 @@ base_url="http://127.0.0.1:{port}/v1"
                     process.terminate()
                     process.wait(timeout=10)
             report['stderr_tail'] = (root / 'stderr.log').read_text()[-2000:] if 'error' in report else ''
-            output = DIRECTORY / (version.replace(' ', '-') + '-appserver-live.json')
+            output = directory / (version.replace(' ', '-') + ('-appserver-live.json' if live else '-appserver-mock.json'))
             output.write_text(json.dumps(report, indent=2) + chr(10))
             print(json.dumps(report), flush=True)
     finally:
@@ -162,4 +196,16 @@ base_url="http://127.0.0.1:{port}/v1"
     return report
 
 if __name__ == '__main__':
-    run(str(Path(sys.argv[1]).resolve()))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("binary")
+    parser.add_argument("--model", default="gpt-6.1-sol")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--live", action="store_true")
+    args = parser.parse_args()
+    report = run(str(Path(args.binary).resolve()), args.model, args.output_dir, args.live)
+    if report.get("error") or not report.get("tool_output_received") or any(
+        check.get("status", "completed") != "completed" or not check.get("marker_received", check.get("completed", True))
+        for check in report["checks"]
+    ):
+        raise SystemExit(1)

@@ -8,6 +8,7 @@ import asyncio
 import base64
 import fcntl
 import json
+import math
 import os
 import struct
 import sys
@@ -33,20 +34,25 @@ HEADERS = {"Authorization": "Bearer qualification-token", "session-id": "synthet
 
 
 class Budget:
-    def __init__(self):
-        DIRECTORY.mkdir(parents=True, exist_ok=True)
-        self.calls = json.loads(LEDGER.read_text()) if LEDGER.exists() else []
+    def __init__(self, directory=None, ceiling=None):
+        self.directory = Path(directory) if directory is not None else DIRECTORY
+        self.ledger = self.directory / "live-ledger.json" if directory is not None else LEDGER
+        self.ceiling = LIVE_CEILING if ceiling is None else ceiling
+        if not math.isfinite(self.ceiling) or self.ceiling <= 0:
+            raise ValueError("Qualification requires a positive finite budget")
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.calls = json.loads(self.ledger.read_text()) if self.ledger.exists() else []
 
     def save(self):
         # Readers see either complete ledger version, including on a crash.
-        with tempfile.NamedTemporaryFile(mode="w", dir=LEDGER.parent, delete=False) as staged:
+        with tempfile.NamedTemporaryFile(mode="w", dir=self.ledger.parent, delete=False) as staged:
             staged.write(json.dumps(self.calls, indent=2) + "\n")
             staged.flush()
             os.fsync(staged.fileno())
-        os.replace(staged.name, LEDGER)
+        os.replace(staged.name, self.ledger)
 
     def locked(self):
-        return LEDGER.with_suffix(".lock").open("a")
+        return self.ledger.with_suffix(".lock").open("a")
 
     def reserve(self, payload, body_bytes):
         def size(value):
@@ -60,23 +66,25 @@ class Budget:
                 return sum(size(v) for v in value)
             return 16
         output = payload.get("max_output_tokens")
-        if not isinstance(output, int) or output > 1024:
+        if isinstance(output, bool) or not isinstance(output, int) or not 1 <= output <= 1024:
             raise RuntimeError("Qualification requires max_output_tokens <= 1024")
         # Published upper (>272k) rates, doubled; count each UTF-8 byte as
         # one token and ignore cache discounts. Unknown models retain the
         # highest built-in rate. Prior reservations are never rewritten.
         rates = {"gpt-6.1-sol": (4, 15), "gpt-6-sol": (4, 15),
+                 "gpt-6.2-sol": (4, 15), "gpt-6.2-astra": (16, 60),
                  "gpt-6-luna": (.2, .75), "gpt-5.6-sol": (8, 30),
                  "gpt-5.6-terra": (4, 18), "gpt-5.6-luna": (.4, 1.8)}
         input_rate, output_rate = rates.get(payload.get("model", "").removeprefix("openai/"), (20, 75))
         reserve = max(.05, 2 * (size(payload) * input_rate + output * output_rate) / 1_000_000)
-        record = {"reservation_id": uuid.uuid4().hex, "model": payload.get("model"), "reserved_max": round(reserve, 6),
+        reserve = math.ceil(reserve * 1_000_000) / 1_000_000
+        record = {"reservation_id": uuid.uuid4().hex, "model": payload.get("model"), "reserved_max": reserve,
                   "body_bytes": body_bytes, "continuation": bool(payload.get("previous_response_id"))}
         with self.locked() as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            self.calls = json.loads(LEDGER.read_text()) if LEDGER.exists() else []
+            self.calls = json.loads(self.ledger.read_text()) if self.ledger.exists() else []
             spent = sum(call.get("actual_cost", call["reserved_max"]) for call in self.calls)
-            if spent + reserve > LIVE_CEILING:
+            if spent + reserve > self.ceiling:
                 raise RuntimeError("Stopping before the approved cumulative live budget is exhausted")
             self.calls.append(record)
             self.save()
@@ -87,11 +95,11 @@ class Budget:
         cost = usage.get("cost")
         if isinstance(cost, dict):
             cost = cost.get("total_cost")
-        if not isinstance(cost, (int, float)) or isinstance(cost, bool) or cost < 0:
+        if not isinstance(cost, (int, float)) or isinstance(cost, bool) or not math.isfinite(cost) or cost < 0:
             return
         with self.locked() as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
-            self.calls = json.loads(LEDGER.read_text())
+            self.calls = json.loads(self.ledger.read_text())
             ident = record.get("reservation_id")
             target = next((c for c in self.calls if ident and c.get("reservation_id") == ident), None)
             if target is None:
@@ -106,6 +114,7 @@ class MeteredTransport(httpx.AsyncBaseTransport):
         self.budget = budget
         self.inner = httpx.AsyncHTTPTransport()
         self.records = []
+        self.effective_payload = None
         self.relay = os.environ.get("QUALIFICATION_ADAPTER_RELAY")
         if self.relay and self.relay != "http://127.0.0.1:4000/v1/responses":
             raise ValueError("Qualification relay must be the existing localhost adapter")
@@ -113,7 +122,9 @@ class MeteredTransport(httpx.AsyncBaseTransport):
     async def handle_async_request(self, request):
         data = await request.aread()
         payload = json.loads(data)
-        record = self.budget.reserve(payload, len(data))
+        # Continuation still processes the saved history, although it is absent
+        # from the transmitted suffix. Release probes supply that full history.
+        record = self.budget.reserve(self.effective_payload or payload, len(data))
         self.records.append(record)
         if self.relay:
             for _ in range(2):

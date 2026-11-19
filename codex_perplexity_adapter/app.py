@@ -56,6 +56,8 @@ def _route(alias: str, upstream: str) -> ModelRoute:
     compatibility = {
         "openai/gpt-6-astra": "astra",
         "openai/gpt-6.1-sol": "gpt-6.1",
+        "openai/gpt-6.2-sol": "gpt-6.2",
+        "openai/gpt-6.2-astra": "gpt-6.2",
     }.get(upstream, "transparent")
     return ModelRoute(alias, upstream, compatibility)
 
@@ -64,6 +66,8 @@ BUILTIN_MODELS = (
     ModelRoute("gpt-6-astra", "openai/gpt-6-astra", "astra"),
     _route("gpt-6.1-sol", "openai/gpt-6.1-sol"),
     _route("gpt-6.1", "openai/gpt-6.1-sol"),
+    _route("gpt-6.2-sol", "openai/gpt-6.2-sol"),
+    _route("gpt-6.2-astra", "openai/gpt-6.2-astra"),
     ModelRoute("gpt-6-sol", "openai/gpt-6-sol"),
     ModelRoute("gpt-6-luna", "openai/gpt-6-luna"),
     ModelRoute("gpt-5.6-sol", "openai/gpt-5.6-sol"),
@@ -179,7 +183,7 @@ def _model_routes(settings: Settings) -> dict[str, ModelRoute]:
 def _normalize_model_request(payload: dict[str, Any], route: ModelRoute) -> dict[str, Any]:
     """Apply model-specific compatibility rules before upstream translation."""
     normalized = dict(payload)
-    if route.compatibility not in {"astra", "gpt-6.1"}:
+    if route.compatibility not in {"astra", "gpt-6.1", "gpt-6.2"}:
         return normalized
 
     reasoning = normalized.get("reasoning")
@@ -187,6 +191,11 @@ def _normalize_model_request(payload: dict[str, Any], route: ModelRoute) -> dict
         normalized["reasoning"] = {**reasoning, "effort": "low"}
     normalized.pop("temperature", None)
     normalized.pop("top_p", None)
+    if route.compatibility == "gpt-6.2":
+        normalized.pop("top_logprobs", None)
+        include = normalized.get("include")
+        if isinstance(include, list):
+            normalized["include"] = [value for value in include if value != "message.output_text.logprobs"]
     return normalized
 
 

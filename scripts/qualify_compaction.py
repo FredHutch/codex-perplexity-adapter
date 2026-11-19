@@ -16,7 +16,9 @@ from codex_perplexity_adapter.app import Settings,create_app
 from codex_perplexity_adapter.request_size import REQUEST_BUDGET_BYTES, encode_request, prepare_request_body
 
 
-def run(binary):
+def run(binary, model="gpt-6.1-sol", output_dir=None):
+    out = Path(output_dir) if output_dir is not None else Path("build/qualification-0.1.15")
+    out.mkdir(parents=True, exist_ok=True)
     requests=[]
     measured=[]
     from unittest.mock import patch
@@ -38,11 +40,11 @@ def run(binary):
     server=uvicorn.Server(uvicorn.Config(app,log_level='error',access_log=False))
     worker=threading.Thread(target=lambda:server.run(sockets=[sock]),daemon=True);worker.start()
     while not server.started:time.sleep(.01)
-    report={'checks':[],'provider':'mock','guard_bytes':REQUEST_BUDGET_BYTES}
+    report={'model':model,'checks':[],'provider':'mock','guard_bytes':REQUEST_BUDGET_BYTES}
     try:
         with tempfile.TemporaryDirectory(prefix='codex-compaction-guard-') as folder:
             root=Path(folder);config_home=root/'codex-home';config_home.mkdir()
-            (config_home/'config.toml').write_text(f'''model="gpt-6.1-sol"
+            (config_home/'config.toml').write_text(f'''model="{model}"
 model_provider="probe"
 model_context_window=40000000
 model_auto_compact_token_limit=30000000
@@ -91,8 +93,15 @@ base_url="http://127.0.0.1:{port}/v1"
             report['status']=app.state.continuation.snapshot()
             report['events']=[{'method':e.get('method'),'params':e.get('params')} for e in rpc.pending if e.get('method') in ('error','turn/completed')]
             report['client']=subprocess.check_output([binary,'--version'],text=True).strip()
-            Path('build/qualification-0.1.15/client-guard-compaction.json').write_text(json.dumps(report,indent=2)+chr(10))
+            (out/'client-guard-compaction.json').write_text(json.dumps(report,indent=2)+chr(10))
             print(json.dumps(report),flush=True)
     finally:server.should_exit=True;worker.join(timeout=10);guard_patch.stop()
 
-if __name__=='__main__':run(str(Path(sys.argv[1]).resolve()))
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("binary")
+    parser.add_argument("--model", default="gpt-6.1-sol")
+    parser.add_argument("--output-dir", type=Path)
+    args = parser.parse_args()
+    run(str(Path(args.binary).resolve()), args.model, args.output_dir)
