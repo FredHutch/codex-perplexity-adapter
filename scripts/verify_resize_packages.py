@@ -24,7 +24,11 @@ from scripts.work_budget_fixtures import many_images
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "build/qualification-0.1.16"
 
-def run(test_app=None):
+def run(test_app=None, output_dir=None):
+    global OUT
+    if output_dir is not None:
+        OUT = Path(output_dir)
+    OUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="resize-tls-") as folder:
         tmp = Path(folder)
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1", "-keyout", str(tmp / "key.pem"), "-out", str(tmp / "cert.pem"), "-subj", "/CN=api.perplexity.ai", "-addext", "subjectAltName=DNS:api.perplexity.ai"], check=True, capture_output=True)
@@ -47,6 +51,10 @@ def run(test_app=None):
                     assert first.startswith(b"POST /v1/responses ")
                     assert headers["authorization"] == "Bearer synthetic-package-key"
                     body = reader.read(int(headers["content-length"])); p = json.loads(body)
+                    if p.get("model") in {"openai/gpt-6.2-sol", "openai/gpt-6.2-astra"}:
+                        assert p["reasoning"]["effort"] == "low"
+                        assert not {"temperature", "top_p", "top_logprobs"} & p.keys()
+                        assert p["include"] == ["reasoning.encrypted_content"]
                     images = [part["image_url"] for part in image_parts(p)]
                     sizes = []
                     for url in images:
@@ -91,6 +99,20 @@ def run(test_app=None):
                             records = seen[start:]
                             assert len(records) == 2 and all(r["bytes"] <= 18_000_000 for r in records)
                             reports.append({"arch": arch, "mock_tls": True, "requests": records, "stats": stats})
+                            aliases = {item["id"] for item in c.get("/v1/models", headers=headers).json()["data"]}
+                            assert {"gpt-6.2-sol", "gpt-6.2-astra"} <= aliases
+                            model_checks = []
+                            for model in ("gpt-6.2-sol", "gpt-6.2-astra"):
+                                for stream in (False, True):
+                                    before = len(seen)
+                                    r = c.post("/v1/responses", headers=headers, json={
+                                        "model": model, "input": "synthetic package check", "stream": stream,
+                                        "reasoning": {"effort": "none"}, "temperature": 0.5,
+                                        "top_p": 0.8, "top_logprobs": 5,
+                                        "include": ["message.output_text.logprobs", "reasoning.encrypted_content"]})
+                                    assert r.status_code == 200 and "completed" in r.text and len(seen) == before + 1
+                                    model_checks.append({"model": model, "stream": stream, "passed": True})
+                            reports[-1]["gpt62_models"] = model_checks
                     finally: process.terminate(); process.wait(timeout=10)
                 # The CLI opt-out must reject the same image-heavy body unchanged.
                 disabled = subprocess.Popen(command + ["--no-resize-images-on-limit"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -118,4 +140,6 @@ def run(test_app=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(); parser.add_argument('--app', type=Path)
-    run(parser.parse_args().app)
+    parser.add_argument('--output-dir', type=Path)
+    args = parser.parse_args()
+    run(args.app, args.output_dir)
