@@ -23,8 +23,9 @@ import base64
 
 OUT = Path(__file__).resolve().parents[1] / "build/qualification-0.1.16"
 
-def run(binary):
-    OUT.mkdir(parents=True, exist_ok=True)
+def run(binary, model="gpt-6.1-sol", output_dir=None):
+    out = Path(output_dir) if output_dir is not None else OUT
+    out.mkdir(parents=True, exist_ok=True)
     seen = []
     measured = []
     def prepare(payload, enabled, work=None):
@@ -48,9 +49,9 @@ def run(binary):
     try:
         with tempfile.TemporaryDirectory(prefix="resize-client-") as folder:
             root = Path(folder); config = root / "home"; config.mkdir()
-            (config / "config.toml").write_text(f'model="gpt-6.1-sol"\nmodel_provider="probe"\nmodel_context_window=40000000\nmodel_auto_compact_token_limit=30000000\n[model_providers.probe]\nname="Mock"\nwire_api="responses"\nexperimental_bearer_token="qualification-token"\nsupports_websockets=false\nbase_url="http://127.0.0.1:{port}/v1"\n')
+            (config / "config.toml").write_text(f'model="{model}"\nmodel_provider="probe"\nmodel_context_window=40000000\nmodel_auto_compact_token_limit=30000000\n[model_providers.probe]\nname="Mock"\nwire_api="responses"\nexperimental_bearer_token="qualification-token"\nsupports_websockets=false\nbase_url="http://127.0.0.1:{port}/v1"\n')
             env = dict(os.environ, CODEX_HOME=str(config)); env.pop("PERPLEXITY_API_KEY", None)
-            with (OUT / "client-stderr.log").open("w") as errors:
+            with (out / "client-stderr.log").open("w") as errors:
                 process = subprocess.Popen([binary, "app-server", "--stdio"], env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True, bufsize=1)
                 rpc = RPC(process)
                 try:
@@ -69,8 +70,8 @@ def run(binary):
                     second = rpc.until(lambda e: e.get("method") == "turn/completed", timeout=60)
                     with httpx.Client() as c:
                         stats = c.get(f"http://127.0.0.1:{port}/v1/adapter/status", headers={"Authorization": "Bearer qualification-token"}).json()
-                    report = {"client": subprocess.check_output([binary, "--version"], text=True).strip(), "requests": seen, "largest_original_body": max(measured), "first": first["params"]["turn"]["status"], "followup": second["params"]["turn"]["status"], "stats": stats}
-                    (OUT / "client-resize.json").write_text(json.dumps(report, indent=2) + "\n")
+                    report = {"model": model, "client": subprocess.check_output([binary, "--version"], text=True).strip(), "requests": seen, "largest_original_body": max(measured), "first": first["params"]["turn"]["status"], "followup": second["params"]["turn"]["status"], "stats": stats}
+                    (out / "client-resize.json").write_text(json.dumps(report, indent=2) + "\n")
                     print(json.dumps(report))
                     assert report["first"] == report["followup"] == "completed"
                     assert stats["image_resize_requests"] >= 1 and all(r["bytes"] <= 19_000_000 for r in seen)
@@ -80,4 +81,10 @@ def run(binary):
         server.should_exit = True; thread.join(timeout=10); guard_patch.stop()
 
 if __name__ == "__main__":
-    run(str(Path(sys.argv[1]).resolve()))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("binary")
+    parser.add_argument("--model", default="gpt-6.1-sol")
+    parser.add_argument("--output-dir", type=Path)
+    args = parser.parse_args()
+    run(str(Path(args.binary).resolve()), args.model, args.output_dir)

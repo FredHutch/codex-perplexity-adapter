@@ -1,6 +1,18 @@
 #define main AdapterLauncherMain
 #import "../AdapterLauncher.m"
 #undef main
+#import <objc/runtime.h>
+
+static NSString *capturedAboutText;
+@interface NSAlert (Qualification)
+- (NSModalResponse)qualificationRunModal;
+@end
+@implementation NSAlert (Qualification)
+- (NSModalResponse)qualificationRunModal {
+    capturedAboutText = [self.informativeText copy];
+    return NSAlertFirstButtonReturn;
+}
+@end
 
 @interface TestDelegate : AppDelegate
 @property NSInteger testPort;
@@ -173,6 +185,14 @@ int main(int argc, const char *argv[]) {
         [delegate hideToMenuBar:nil];
         [delegate startFromMenu:nil];
         Check(delegate.promptedWhileVisible, @"Menu Start did not reveal key entry");
+        Method originalModal = class_getInstanceMethod(NSAlert.class, @selector(runModal));
+        Method capturedModal = class_getInstanceMethod(NSAlert.class, @selector(qualificationRunModal));
+        method_exchangeImplementations(originalModal, capturedModal);
+        [delegate showAbout:nil];
+        method_exchangeImplementations(originalModal, capturedModal);
+        Check([capturedAboutText containsString:@"Version 0.1.17"], @"About version mismatch");
+        Check([capturedAboutText containsString:@"gpt-6.2-sol"] && [capturedAboutText containsString:@"gpt-6.2-astra"], @"GPT-6.2 models missing from About");
+        [reports addObject:@{@"about": @"0.1.17 and both GPT-6.2 models", @"passed": @YES}];
         [reports addObject:@{@"lifecycle": @"close/show/Dock/menu/quit", @"passed": @YES}];
         [delegate.window orderOut:nil];
         NSData *data = [NSJSONSerialization dataWithJSONObject:reports options:NSJSONWritingPrettyPrinted error:nil];

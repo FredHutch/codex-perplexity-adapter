@@ -356,35 +356,39 @@ class AppTests(unittest.TestCase):
                 self.assertNotIn('Do not edit files.', json.dumps(seen[-1]))
         self.assertEqual(history, original)
 
-    def test_gpt61_reasoning_for_all_route_sources(self):
-        configurations = [
-            (Settings(api_key="test"), "gpt-6.1"),
-            (Settings(api_key="test"), "gpt-6.1-sol"),
-            (Settings(api_key="test", model_routes=("team=openai/gpt-6.1-sol",)), "team"),
-            (Settings(api_key="test", model_alias="pinned", upstream_model="openai/gpt-6.1-sol"), "pinned"),
-            # A pinned registry excludes the built-ins, exercising passthrough.
-            (Settings(api_key="test", model_alias="other", allow_model_passthrough=True), "gpt-6.1-sol"),
-        ]
-        for settings, alias in configurations:
+    def test_modern_model_reasoning_for_all_route_sources(self):
+        configurations = [(Settings(api_key="test"), "gpt-6.1", "openai/gpt-6.1-sol")]
+        for model in ("gpt-6.1-sol", "gpt-6.2-sol", "gpt-6.2-astra"):
+            upstream = f"openai/{model}"
+            configurations.extend([
+                (Settings(api_key="test"), model, upstream),
+                (Settings(api_key="test", model_routes=(f"team={upstream}",)), "team", upstream),
+                (Settings(api_key="test", model_alias="pinned", upstream_model=upstream), "pinned", upstream),
+                # A pinned registry excludes the built-ins, exercising passthrough.
+                (Settings(api_key="test", model_alias="other", allow_model_passthrough=True), model, upstream),
+            ])
+        for settings, alias, upstream in configurations:
             seen = []
 
             async def handler(request):
                 seen.append(json.loads(request.content))
                 return httpx.Response(200, json={"status": "completed", "output": []})
 
-            with self.subTest(alias=alias, settings=settings):
+            with self.subTest(alias=alias, upstream=upstream, settings=settings):
                 with TestClient(create_app(settings, transport=httpx.MockTransport(handler))) as client:
                     self.assertEqual(client.app.version, __version__)
-                    for effort in ("none", "minimal", "low", "medium", "high", "xhigh", "max", None):
+                    for effort in ("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra", None):
                         payload = {"model": alias, "input": "hello", "temperature": 0.4,
-                                   "top_p": 0.8, "future_field": {"enabled": True}}
+                                   "top_p": 0.8, "top_logprobs": 5,
+                                   "include": ["reasoning.encrypted_content", "message.output_text.logprobs"],
+                                   "future_field": {"enabled": True}}
                         if effort is not None:
                             payload["reasoning"] = {"effort": effort, "summary": "auto"}
                         response = client.post("/v1/responses", json=payload,
                                                headers={"Authorization": "Bearer local-adapter-token"})
                         self.assertEqual(response.status_code, 200)
                         sent = seen[-1]
-                        self.assertEqual(sent["model"], "openai/gpt-6.1-sol")
+                        self.assertEqual(sent["model"], upstream)
                         if effort is None:
                             self.assertNotIn("reasoning", sent)
                         else:
@@ -394,26 +398,39 @@ class AppTests(unittest.TestCase):
                             })
                         self.assertNotIn("temperature", sent)
                         self.assertNotIn("top_p", sent)
+                        if upstream in {"openai/gpt-6.2-sol", "openai/gpt-6.2-astra"}:
+                            self.assertNotIn("top_logprobs", sent)
+                            self.assertEqual(sent["include"], ["reasoning.encrypted_content"])
+                        else:
+                            self.assertEqual(sent["top_logprobs"], 5)
+                            self.assertEqual(sent["include"], payload["include"])
                         self.assertEqual(sent["future_field"], payload["future_field"])
 
-    def test_gpt61_override_to_other_upstream_stays_transparent(self):
+    def test_modern_model_override_to_other_upstream_stays_transparent(self):
         async def handler(request):
             sent = json.loads(request.content)
             self.assertEqual(sent["model"], "openai/gpt-6-sol")
             self.assertEqual(sent["reasoning"], {"effort": "minimal"})
             self.assertEqual(sent["temperature"], 0.4)
             self.assertEqual(sent["top_p"], 0.8)
+            self.assertEqual(sent["top_logprobs"], 5)
+            self.assertEqual(sent["include"], ["message.output_text.logprobs"])
             return httpx.Response(200, json={"output": []})
 
-        settings = Settings(api_key="test", model_routes=("gpt-6.1=openai/gpt-6-sol",))
-        with TestClient(create_app(settings, transport=httpx.MockTransport(handler))) as client:
-            response = client.post("/v1/responses", headers={"Authorization": "Bearer local-adapter-token"},
-                                   json={"model": "gpt-6.1", "input": "hello",
-                                         "reasoning": {"effort": "minimal"}, "temperature": 0.4, "top_p": 0.8})
-        self.assertEqual(response.status_code, 200)
+        for alias in ("gpt-6.1", "gpt-6.2-sol", "gpt-6.2-astra"):
+            settings = Settings(api_key="test", model_routes=(f"{alias}=openai/gpt-6-sol",))
+            with self.subTest(alias=alias):
+                with TestClient(create_app(settings, transport=httpx.MockTransport(handler))) as client:
+                    response = client.post("/v1/responses", headers={"Authorization": "Bearer local-adapter-token"},
+                                           json={"model": alias, "input": "hello",
+                                                 "reasoning": {"effort": "minimal"}, "temperature": 0.4,
+                                                 "top_p": 0.8, "top_logprobs": 5,
+                                                 "include": ["message.output_text.logprobs"]})
+                self.assertEqual(response.status_code, 200)
 
-    def test_gpt61_tools_and_followup_json_and_stream(self):
-        for alias in ("gpt-6.1", "gpt-6.1-sol"):
+    def test_modern_model_tools_and_followup_json_and_stream(self):
+        for alias in ("gpt-6.1", "gpt-6.1-sol", "gpt-6.2-sol", "gpt-6.2-astra"):
+            upstream = "openai/gpt-6.1-sol" if alias == "gpt-6.1" else f"openai/{alias}"
             for stream in (False, True):
                 seen = []
                 items = [
@@ -426,7 +443,7 @@ class AppTests(unittest.TestCase):
                 async def handler(request):
                     sent = json.loads(request.content)
                     seen.append(sent)
-                    self.assertEqual(sent["model"], "openai/gpt-6.1-sol")
+                    self.assertEqual(sent["model"], upstream)
                     self.assertEqual(sent["reasoning"]["effort"], "low")
                     self.assertNotIn("client_metadata", sent)
                     self.assertEqual([t["name"] for t in sent["tools"]], ["probe__echo", "exec"])
@@ -652,6 +669,8 @@ class AppTests(unittest.TestCase):
             "gpt-6-astra": "openai/gpt-6-astra",
             "gpt-6.1-sol": "openai/gpt-6.1-sol",
             "gpt-6.1": "openai/gpt-6.1-sol",
+            "gpt-6.2-sol": "openai/gpt-6.2-sol",
+            "gpt-6.2-astra": "openai/gpt-6.2-astra",
             "gpt-6-sol": "openai/gpt-6-sol",
             "gpt-6-luna": "openai/gpt-6-luna",
             "gpt-5.6-sol": "openai/gpt-5.6-sol",

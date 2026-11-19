@@ -19,7 +19,8 @@ from codex_perplexity_adapter.continuation import canonical_item
 DIRECTORY = Path(__file__).resolve().parents[1] / "build/qualification-0.1.13"
 
 
-def run(binary, live=False):
+def run(binary, live=False, model="gpt-6.1-sol", output_dir=None):
+    directory = Path(output_dir) if output_dir is not None else DIRECTORY
     seen, saved = [], {}
     async def provider(request):
         payload = json.loads(request.content)
@@ -110,7 +111,7 @@ def run(binary, live=False):
             root = Path(folder)
             home = root / "codex-home"
             home.mkdir()
-            (home / "config.toml").write_text('model="gpt-6.1-sol"\nmodel_provider="probe"\nmodel_reasoning_effort="low"\n'
+            (home / "config.toml").write_text(f'model="{model}"\nmodel_provider="probe"\nmodel_reasoning_effort="low"\n'
                 '[model_providers.probe]\nname="Probe"\nwire_api="responses"\n'
                 'env_key="QUALIFICATION_LOCAL_TOKEN"\nsupports_websockets=false\n'
                 f'base_url="http://127.0.0.1:{port}/v1"\n')
@@ -121,7 +122,7 @@ def run(binary, live=False):
                 env=env, capture_output=True, text=True, timeout=90, stdin=subprocess.DEVNULL)
             # Persist only synthetic result evidence and aggregate request metadata.
             version = subprocess.check_output([str(Path(binary).resolve()), "--version"], env=env, text=True).strip()
-            report = {"client": version, "returncode": result.returncode, "upstream_requests": len(seen),
+            report = {"client": version, "model": model, "returncode": result.returncode, "upstream_requests": len(seen),
                 "continuation_used": app.state.continuation.snapshot()["continuation_requests"] > 0,
                 "tool_result_received": any(any(isinstance(i, dict) and i.get("type") in {"function_call_output", "custom_tool_call_output"}
                     and "SYNTHETIC_TOOL_924" in str(i.get("output")) for i in p["input"]) for p in seen),
@@ -134,8 +135,8 @@ def run(binary, live=False):
                 "stats": app.state.continuation.snapshot(),
                 "request_shapes": [{"input_items": len(p["input"]), "body_bytes": len(json.dumps(p).encode()),
                                     "continued": bool(p.get("previous_response_id"))} for p in seen]}
-            DIRECTORY.mkdir(parents=True, exist_ok=True)
-            (DIRECTORY / (version.replace(" ", "-") + ("-live.json" if live else "-mock.json"))).write_text(json.dumps(report, indent=2) + "\n")
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / (version.replace(" ", "-") + ("-live.json" if live else "-mock.json"))).write_text(json.dumps(report, indent=2) + "\n")
             print(json.dumps(report), flush=True)
             if not report["completed_final_answer"] or not report["tool_result_received"]:
                 print("Client diagnostics:", result.stderr[-4000:], result.stdout[-2000:], flush=True)
@@ -149,4 +150,13 @@ def run(binary, live=False):
 
 
 if __name__ == "__main__":
-    run(sys.argv[1], live="--live" in sys.argv)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("binary")
+    parser.add_argument("--model", default="gpt-6.1-sol")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--live", action="store_true")
+    args = parser.parse_args()
+    report = run(args.binary, args.live, args.model, args.output_dir)
+    if not all(report.get(key) for key in ("completed_final_answer", "tool_result_received", "shell_command_completed")) or report["returncode"]:
+        raise SystemExit(1)

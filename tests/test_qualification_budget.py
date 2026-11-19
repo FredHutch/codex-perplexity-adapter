@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import httpx
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,36 @@ PAYLOAD = {"model": "openai/gpt-6.1-sol", "input": "synthetic", "max_output_toke
 
 
 class QualificationBudgetTests(unittest.TestCase):
+    def test_release_budget_isolated_and_shared_across_models_after_restart(self):
+        with tempfile.TemporaryDirectory() as folder:
+            directory = Path(folder)
+            budget = qualification.Budget(directory=directory, ceiling=5.0)
+            for model in ("openai/gpt-6.2-sol", "openai/gpt-6.2-astra"):
+                budget.reserve({**PAYLOAD, "model": model, "input": "X" * 10000}, 10000)
+            restarted = qualification.Budget(directory=directory, ceiling=5.0)
+            while True:
+                try:
+                    restarted.reserve({**PAYLOAD, "model": "openai/gpt-6.2-astra", "input": "X" * 10000}, 10000)
+                except RuntimeError:
+                    break
+            records = json.loads(restarted.ledger.read_text())
+            self.assertLessEqual(sum(r["reserved_max"] for r in records), 5.0)
+            self.assertEqual({r["model"] for r in records}, {"openai/gpt-6.2-sol", "openai/gpt-6.2-astra"})
+            with self.assertRaises(RuntimeError):
+                qualification.Budget(directory=directory, ceiling=5.0).reserve(
+                    {**PAYLOAD, "input": "X" * 10000, "model": "openai/gpt-6.2-astra"}, 10000)
+
+    def test_invalid_output_caps_and_nonfinite_costs_cannot_release_reservations(self):
+        with tempfile.TemporaryDirectory() as folder:
+            budget = qualification.Budget(directory=folder, ceiling=5.0)
+            for value in (True, False, 0, -1, 1025, 1.5, None):
+                with self.subTest(output=value), self.assertRaises(RuntimeError):
+                    budget.reserve({**PAYLOAD, "max_output_tokens": value}, 100)
+            record = budget.reserve(PAYLOAD, 100)
+            for cost in (float("nan"), float("inf"), -1, True):
+                budget.settle(record, {"usage": {"cost": cost}})
+            self.assertNotIn("actual_cost", json.loads(budget.ledger.read_text())[0])
+
     def test_stale_instances_merge_and_settle_only_their_reservation(self):
         with tempfile.TemporaryDirectory() as folder, \
              patch.object(qualification, "DIRECTORY", Path(folder)), \
@@ -79,3 +110,29 @@ for _ in range(2):
             records = json.loads(qualification.LEDGER.read_text())
             self.assertEqual(records[0], {"reserved_max": 10.0})
             self.assertEqual(len(records), 2)
+
+
+class ReleaseTransportBudgetTests(unittest.IsolatedAsyncioTestCase):
+    async def test_continuation_reserves_full_effective_history_before_every_attempt(self):
+        with tempfile.TemporaryDirectory() as folder:
+            budget = qualification.Budget(directory=folder, ceiling=5.0)
+            meter = qualification.MeteredTransport(budget)
+            await meter.inner.aclose()
+            attempts = []
+            async def handler(request):
+                attempts.append(request)
+                return httpx.Response(200, json={"status": "completed", "output": []})
+            meter.inner = httpx.MockTransport(handler)
+            meter.relay = None
+            full = {"model": "openai/gpt-6.2-astra", "input": "X" * 100000, "max_output_tokens": 1024}
+            meter.effective_payload = full
+            request = httpx.Request("POST", "https://api.perplexity.ai/v1/responses",
+                                   json={**full, "input": "new", "previous_response_id": "synthetic"})
+            response = await meter.handle_async_request(request)
+            await response.aread()
+            await response.aclose()
+            records = json.loads(budget.ledger.read_text())
+            self.assertGreater(records[0]["reserved_max"], 3.0)
+            with self.assertRaises(RuntimeError):
+                await meter.handle_async_request(request)
+            self.assertEqual(len(attempts), 1)

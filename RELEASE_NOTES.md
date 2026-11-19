@@ -1,9 +1,9 @@
-# v0.1.16 — Compact launcher and menu-bar controls
+# v0.1.17 — GPT-6.2 model support
 
-- Oversized-image recovery is automatic in the app and enabled by default in the CLI. CLI users can preserve original detail with --no-resize-images-on-limit; the positive flag remains compatible.
-- **Details** starts collapsed and contains all statistics and the resizing readability note. Connection status and errors stay visible.
-- Close the window or use **Hide to Menu Bar** to keep the adapter running without a Dock icon. The menu bar provides Show, Start, Stop, About and Quit. **⌘Q** stops the adapter.
+Choose `gpt-6.2-sol` or `gpt-6.2-astra` in Codex. Both models are included in the adapter's model list and the macOS About window, and route to their matching Perplexity models.
 
-The 19 MB guard, 18 MB resizing target, continuation behavior and work allowances are unchanged. Resizing can reduce small-text readability and cannot guarantee that requests fit independent provider or model limits. Use /compact when needed.
+The adapter maps `none` and `minimal` reasoning effort to `low` for these models and removes unsupported sampling and log-probability options. These rules also apply through custom, pinned, and passthrough routes.
 
-See [release verification](VERIFICATION_0.1.16_RELEASE.md) and [GitHub Releases](https://github.com/FredHutch/codex-perplexity-adapter/releases) for past versions.
+Existing model names, the 19 MB request guard, automatic oversized-image recovery, and conversation reuse remain available. Resizing can reduce small-text readability; use `--no-resize-images-on-limit` for precision form review.
+
+See [release verification](VERIFICATION_0.1.17_RELEASE.md) for local client, live model, and distribution checks. The downloads include Apple Silicon and Intel macOS apps, a Python wheel, and SHA-256 checksums.
