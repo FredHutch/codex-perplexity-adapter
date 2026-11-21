@@ -122,8 +122,10 @@ class ContinuationTests(unittest.TestCase):
         task_parts = [{"type": "input_text", "text": "Message Type: NEW_TASK\nPayload:\n"},
                       {"type": "input_text", "text": " \t"},
                       {"type": "input_text", "text": " Reply with ORCHID. "}]
-        task = agent_message("/root", "/root/child", [task_parts[0], {"type": "input_text", "text": ""},
-                                                     *task_parts[1:]])
+        task = agent_message("/root", "/root/child", [
+            task_parts[0], {"type": "input_text", "text": ""}, *task_parts[1:],
+        ])
+        task["internal_chat_message_metadata_passthrough"] = {"synthetic": True}
         reasoning = {"type": "reasoning", "summary": [], "encrypted_content": "synthetic-reasoning"}
         initial_history = [message(f"Turn {i}") for i in range(12)] + [reasoning, task]
         normalized_task = {"type": "message", "role": "user", "content": task_parts}
@@ -145,11 +147,57 @@ class ContinuationTests(unittest.TestCase):
         self.assertNotIn("previous_response_id", replayed)
         self.assertEqual(replayed["input"], self.provider.seen[0]["input"] + first["output"] + continued["input"])
 
+    def test_agent_tools_request_plaintext_and_deliver_the_native_handoff(self):
+        marker = "Reply with ORCHID.\nKeep this newline."
+        message_schema = {"type": "string", "description": "Task for the agent", "encrypted": True}
+        parameters = {"type": "object", "properties": {"message": message_schema}, "required": ["message"]}
+        names = ("spawn_agent", "send_message", "followup_task", "other_tool")
+        tools = [{"type": "namespace", "name": namespace, "tools": [
+            {"type": "function", "name": name, "parameters": parameters} for name in names
+        ]} for namespace in ("collaboration", "plugin")]
+        tools.append({"type": "function", "name": "send_message", "parameters": parameters})
+
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                self.provider.output = [{"type": "function_call", "id": "fc_spawn", "call_id": "call_spawn",
+                    "name": "collaboration__spawn_agent", "arguments": json.dumps({"message": marker})}]
+                response = terminal(self.send([message("Delegate an echo")], tools=tools, stream=stream))
+                parent_request = self.provider.seen[-1]
+                schemas = {tool["name"]: tool["parameters"]["properties"]["message"]
+                           for tool in parent_request["tools"]}
+                for name in names:
+                    expected = message_schema if name == "other_tool" else {
+                        "type": "string", "description": "Task for the agent",
+                    }
+                    self.assertEqual(schemas[f"collaboration__{name}"], expected)
+                    self.assertEqual(schemas[f"plugin__{name}"], message_schema)
+                self.assertEqual(schemas["send_message"], message_schema)
+                self.assertTrue(message_schema["encrypted"])
+                call = response["output"][0]
+                self.assertEqual((call["namespace"], call["name"]), ("collaboration", "spawn_agent"))
+                payload = json.loads(call["arguments"])["message"]
+
+                self.provider.output = [answer()]
+                for kind in ("NEW_TASK", "MESSAGE"):
+                    header = {"type": "input_text", "text": f"Message Type: {kind}\n"
+                              "Task name: /root/child\nSender: /root\nPayload:\n"}
+                    handoff = {"type": "agent_message", "id": "amsg_test", "author": "/root",
+                               "recipient": "/root/child", "content": [
+                                   header, {"type": "encrypted_content", "encrypted_content": payload},
+                               ]}
+                    result = self.send([handoff], stream=stream)
+                    self.assertEqual(result.status_code, 200)
+                    self.assertEqual(self.provider.seen[-1]["input"], [
+                        {"type": "message", "role": "user", "content": [header, *message(marker)["content"]]},
+                    ])
+
     def test_unsupported_agent_messages_are_rejected_at_the_original_index(self):
         withheld = "gAAAAA-synthetic-opaque-payload"
         plaintext = {"type": "input_text", "text": "synthetic-private-message"}
         encrypted = {"type": "encrypted_content", "encrypted_content": withheld}
-        agent_message = {"type": "agent_message", "author": "synthetic-private-author"}
+        agent_message = {"type": "agent_message", "author": "/root", "recipient": "/root/child"}
+        header = {"type": "input_text", "text": "Message Type: NEW_TASK\n"
+                  "Task name: /root/child\nSender: /root\nPayload:\n"}
         unsupported = [
             ("missing", {}),
             ("empty", {"content": []}),
@@ -159,8 +207,12 @@ class ContinuationTests(unittest.TestCase):
             ("malformed text", {"content": [{"type": "input_text", "text": 7}]}),
             ("unknown part", {"content": [{"type": "output_text", "text": "synthetic-private-message"}]}),
             ("encrypted", {"content": [encrypted]}),
-            ("mixed", {"content": [plaintext, encrypted]}),
-            ("plaintext in encrypted field", {"content": [plaintext, {**encrypted, "encrypted_content": "Reply with ALPHA"}]}),
+            ("unrecognized envelope", {"content": [plaintext, {**encrypted, "encrypted_content": "Reply with ORCHID"}]}),
+            ("ciphertext in native envelope", {"content": [header, encrypted]}),
+            ("opaque envelope in native envelope", {"content": [header, {**encrypted, "encrypted_content": "pv_opaque"}]}),
+            ("missing encrypted value", {"content": [plaintext, {"type": "encrypted_content"}]}),
+            ("malformed encrypted value", {"content": [plaintext, {**encrypted, "encrypted_content": 7}]}),
+            ("empty encrypted value", {"content": [plaintext, {**encrypted, "encrypted_content": ""}]}),
             ("top-level encrypted field", {"content": [plaintext], "encrypted_content": withheld}),
             ("encrypted field on text part", {"content": [{**plaintext, "encrypted_content": withheld}]}),
         ]
@@ -175,8 +227,7 @@ class ContinuationTests(unittest.TestCase):
                     self.assertEqual(response.status_code, 400)
                     self.assertEqual(response.json(), {"error": {
                         "type": "invalid_request_error", "code": "unsupported_agent_message", "param": "input[15]",
-                        "message": "input[15]: The Perplexity adapter requires Codex subagent messages "
-                                   "to contain only plaintext input_text parts.",
+                        "message": "input[15]: Codex subagent message has an unsupported format or no readable payload.",
                     }})
         self.assertEqual(self.provider.seen, [])
 
