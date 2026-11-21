@@ -114,6 +114,86 @@ class ContinuationTests(unittest.TestCase):
         self.assertNotIn("ORCHID", json.dumps(status))
         self.assertTrue(all(type(v) is int for v in status.values()))
 
+    def test_plaintext_agent_messages_survive_continuation_and_full_replay(self):
+        def agent_message(author, recipient, content):
+            return {"type": "agent_message", "id": "amsg_test", "author": author,
+                    "recipient": recipient, "content": content}
+
+        task_parts = [{"type": "input_text", "text": "Message Type: NEW_TASK\nPayload:\n"},
+                      {"type": "input_text", "text": " \t"},
+                      {"type": "input_text", "text": " Reply with ORCHID. "}]
+        task = agent_message("/root", "/root/child", [task_parts[0], {"type": "input_text", "text": ""},
+                                                     *task_parts[1:]])
+        reasoning = {"type": "reasoning", "summary": [], "encrypted_content": "synthetic-reasoning"}
+        initial_history = [message(f"Turn {i}") for i in range(12)] + [reasoning, task]
+        normalized_task = {"type": "message", "role": "user", "content": task_parts}
+        first = terminal(self.send(initial_history, stream=True))
+        self.assertEqual(self.provider.seen[-1]["input"], initial_history[:-1] + [normalized_task])
+
+        result_parts = [{"type": "input_text", "text": "Message Type: FINAL_ANSWER\nORCHID"}]
+        result = agent_message("/root/child", "/root", result_parts)
+        followup = message("Continue after the subagent reply.")
+        history = initial_history + first["output"] + [result, followup]
+        self.assertEqual(history[15], result)
+        normalized_result = {"type": "message", "role": "user", "content": result_parts}
+
+        self.provider.failure = (400, {"error": {"code": "previous_response_not_found"}})
+        self.assertEqual(self.send(history, stream=True).status_code, 200)
+        continued, replayed = self.provider.seen[-2:]
+        self.assertEqual(continued["previous_response_id"], first["id"])
+        self.assertEqual(continued["input"], [normalized_result, followup])
+        self.assertNotIn("previous_response_id", replayed)
+        self.assertEqual(replayed["input"], self.provider.seen[0]["input"] + first["output"] + continued["input"])
+
+    def test_unsupported_agent_messages_are_rejected_at_the_original_index(self):
+        withheld = "gAAAAA-synthetic-opaque-payload"
+        plaintext = {"type": "input_text", "text": "synthetic-private-message"}
+        encrypted = {"type": "encrypted_content", "encrypted_content": withheld}
+        agent_message = {"type": "agent_message", "author": "synthetic-private-author"}
+        unsupported = [
+            ("missing", {}),
+            ("empty", {"content": []}),
+            ("blank", {"content": [{"type": "input_text", "text": " \n"}]}),
+            ("non-list", {"content": "synthetic-private-message"}),
+            ("non-object part", {"content": [None]}),
+            ("malformed text", {"content": [{"type": "input_text", "text": 7}]}),
+            ("unknown part", {"content": [{"type": "output_text", "text": "synthetic-private-message"}]}),
+            ("encrypted", {"content": [encrypted]}),
+            ("mixed", {"content": [plaintext, encrypted]}),
+            ("plaintext in encrypted field", {"content": [plaintext, {**encrypted, "encrypted_content": "Reply with ALPHA"}]}),
+            ("top-level encrypted field", {"content": [plaintext], "encrypted_content": withheld}),
+            ("encrypted field on text part", {"content": [{**plaintext, "encrypted_content": withheld}]}),
+        ]
+        prefix = [message(f"Turn {i}") for i in range(14)] + [{"type": "additional_tools", "tools": []}]
+        for stream in (False, True):
+            for label, fields in unsupported:
+                with self.subTest(stream=stream, shape=label):
+                    response = self.client.post("/v1/responses", headers=HEADERS, json={
+                        "model": "gpt-6.1-sol", "stream": stream,
+                        "input": prefix + [{**agent_message, **fields}, message("Later history")],
+                    })
+                    self.assertEqual(response.status_code, 400)
+                    self.assertEqual(response.json(), {"error": {
+                        "type": "invalid_request_error", "code": "unsupported_agent_message", "param": "input[15]",
+                        "message": "input[15]: The Perplexity adapter requires Codex subagent messages "
+                                   "to contain only plaintext input_text parts.",
+                    }})
+        self.assertEqual(self.provider.seen, [])
+
+    def test_unsupported_agent_message_in_provider_output_skips_checkpoint(self):
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                self.provider.output = [answer()]
+                history, prior = self.first(stream=stream)
+                output = {"id": "amsg_test", "type": "agent_message",
+                          "content": [{"type": "encrypted_content", "encrypted_content": "synthetic-opaque"}]}
+                self.provider.output = [output]
+                response = self.send(history + [message("Next")], stream=stream)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(terminal(response)["output"], [output])
+                self.assertEqual(self.provider.seen[-1]["previous_response_id"], prior["id"])
+                self.assertEqual(self.app.state.continuation.snapshot()["continuation_cache_entries"], 0)
+
     def test_long_history_savings_exact_utf8_and_image_bytes(self):
         image = "data:image/png;base64," + "a" * 100_000
         history = [message("é" * 50_000), {"type": "function_call_output", "call_id": "c",

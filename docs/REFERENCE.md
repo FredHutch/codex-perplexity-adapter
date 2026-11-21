@@ -8,6 +8,8 @@ Requests and responses are forwarded by default. The adapter replaces the public
 
 Image content in tool results is preserved. Codex image detail `original` is mapped to `high`.
 
+The adapter sends plaintext Codex `agent_message` items as user messages during task delivery and history replay. It omits zero-length text parts, which Perplexity rejects. If an item contains `encrypted_content` or lacks valid plaintext parts, the adapter returns HTTP 400 with `unsupported_agent_message` and the original input index. Support for `encrypted_content` inside ordinary assistant messages is a separate follow-up. [Codex compatibility report](https://github.com/openai/codex/issues/33551#issuecomment-6649379689)
+
 When Codex replays a conversation containing several explicit developer mode instructions, the adapter retains only the latest `<collaboration_mode>` block. This prevents obsolete Plan instructions from competing with a later Default instruction. Other developer instructions, including permissions, stay in place. User messages, assistant replies, and tool results cannot change the mode through this conversion.
 
 ## CLI model routing
