@@ -13,6 +13,7 @@ COLLABORATION_MODE_BLOCK = re.compile(
     r"Collaboration Mode: (?:Default|Plan))[^\n]*\n.*?\n</collaboration_mode>",
     re.DOTALL,
 )
+AGENT_HANDOFF_TOOLS = {"spawn_agent", "send_message", "followup_task"}
 
 
 def _normalize_collaboration_modes(items: list[Any]) -> list[Any]:
@@ -137,8 +138,26 @@ def _normalize_tool_output(output: Any, *, custom: bool) -> Any:
 class UnsupportedAgentMessage(ValueError):
     def __init__(self, index: int):
         self.param = f"input[{index}]"
-        super().__init__(f"{self.param}: The Perplexity adapter requires Codex subagent messages "
-                         "to contain only plaintext input_text parts.")
+        super().__init__(f"{self.param}: Codex subagent message has an unsupported format or no readable payload.")
+
+
+def _plaintext_agent_handoff(item: dict[str, Any], content: list[Any]) -> list[Any]:
+    """Recover plaintext tool arguments that Codex put in its encrypted envelope."""
+    if len(content) != 2 or not all(isinstance(part, dict) for part in content):
+        return content
+    header, body = content
+    if header.get("type") != "input_text" or body.get("type") != "encrypted_content":
+        return content
+    recipient, author = item.get("recipient"), item.get("author")
+    if not all(isinstance(path, str) and path.startswith("/") for path in (recipient, author)):
+        return content
+    suffix = f"\nTask name: {recipient}\nSender: {author}\nPayload:\n"
+    if header.get("text") not in ("Message Type: NEW_TASK" + suffix, "Message Type: MESSAGE" + suffix):
+        return content
+    payload = body.get("encrypted_content")
+    if not isinstance(payload, str) or not payload.strip() or payload.lstrip().startswith(("gAAAAA", "pv_")):
+        return content
+    return [header, {"type": "input_text", "text": payload}]
 
 
 def _normalize_agent_message(item: dict[str, Any], index: int) -> dict[str, Any]:
@@ -146,8 +165,8 @@ def _normalize_agent_message(item: dict[str, Any], index: int) -> dict[str, Any]
     if "encrypted_content" in item or not isinstance(content, list):
         raise UnsupportedAgentMessage(index)
 
-    parts = []
-    for part in content:
+    parts: list[dict[str, Any]] = []
+    for part in _plaintext_agent_handoff(item, content):
         if (not isinstance(part, dict) or part.get("type") != "input_text"
                 or not isinstance(part.get("text"), str) or "encrypted_content" in part):
             raise UnsupportedAgentMessage(index)
@@ -220,6 +239,17 @@ def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
     return _normalize_collaboration_modes(normalized), additional_tools
 
 
+def _normalize_agent_handoff_tool(tool: dict[str, Any]) -> dict[str, Any]:
+    """Keep Perplexity from encrypting the task before Codex relays it."""
+    parameters = tool.get("parameters")
+    properties = parameters.get("properties") if isinstance(parameters, dict) else None
+    message = properties.get("message") if isinstance(properties, dict) else None
+    if not isinstance(message, dict) or message.get("encrypted") is not True:
+        return tool
+    plaintext_message = {key: value for key, value in message.items() if key != "encrypted"}
+    return {**tool, "parameters": {**parameters, "properties": {**properties, "message": plaintext_message}}}
+
+
 def _normalize_tools(tools: Any) -> tuple[list[Any], ToolContext]:
     normalized: list[Any] = []
     context = ToolContext()
@@ -241,6 +271,9 @@ def _normalize_tools(tools: Any) -> tuple[list[Any], ToolContext]:
         if namespace and isinstance(original_name, str) and original_name:
             upstream_name = f"{namespace}__{original_name}"
             context.namespace_tools[upstream_name] = (namespace, original_name)
+        if (tool_type == "function" and namespace == "collaboration"
+                and isinstance(original_name, str) and original_name in AGENT_HANDOFF_TOOLS):
+            tool = _normalize_agent_handoff_tool(tool)
         if tool_type != "custom":
             normalized.append({**tool, "name": upstream_name} if upstream_name != original_name else tool)
             return

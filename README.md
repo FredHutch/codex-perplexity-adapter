@@ -44,7 +44,7 @@ Choose `gpt-6.2-sol`, `gpt-6.2-astra`, `gpt-6.1-sol`, `gpt-6-astra`, `gpt-6-sol`
 
 ## Current version
 
-**Current version: v0.1.18.** Supports plaintext Codex subagent handoffs and replayed replies. Conversation reuse and oversized-image recovery are automatic. Requests remain limited to 19 MB. Open **Details** to see activity and savings; it starts collapsed.
+**Current version: v0.1.19.** Fixes Codex subagent task delivery through Perplexity. Conversation reuse and oversized-image recovery are automatic. Requests remain limited to 19 MB. Open **Details** to see activity and savings; it starts collapsed.
 
 Resizing can make small text, decimal points and identifiers harder to read. For precision form review, run the CLI with `--no-resize-images-on-limit` to preserve original detail. If a request still exceeds the limit, use `/compact` and retry.
 

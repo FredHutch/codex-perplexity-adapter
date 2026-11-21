@@ -1,7 +1,7 @@
-# v0.1.18 — Codex subagent handoffs
+# v0.1.19 — Fix Codex subagent task delivery
 
-The adapter translates plaintext Codex subagent tasks and replies into standard user messages. This fixes the `unknown item type "agent_message"` error during task delivery and when a conversation replays a child’s reply.
+Codex subagents can now receive assignments and follow-up messages through Perplexity. The adapter requests plaintext task arguments over HTTPS and turns Codex’s handoff into a standard Responses message. Subagent replies remain available when the parent replays conversation history.
 
-Handoffs containing `encrypted_content` return a local `unsupported_agent_message` error with the original input index. Codex must provide a readable task for the child to receive it.
+If a delegation failed with the plaintext input error in v0.1.18, upgrade and retry the task with a fresh subagent. Assignments already encrypted by the earlier version cannot be recovered by the adapter.
 
-The downloads include Apple Silicon and Intel macOS apps, a Python wheel, and SHA-256 checksums.
+Downloads include notarized macOS apps for Apple Silicon and Intel, a Python wheel, and SHA-256 checksums.
