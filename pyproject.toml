@@ -15,7 +15,7 @@ dependencies = [
   "certifi==2026.10.18",
   "fastapi==0.141.1",
   "httpx==0.28.1",
-  "uvicorn==0.52.1",
+  "uvicorn==0.54.0",
 ]
 
 [project.urls]
