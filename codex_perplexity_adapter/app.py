@@ -16,11 +16,17 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import __version__
-from .continuation import ContinuationManager, has_local_tools, outstanding_calls, prior_response_error
+from .continuation import ContinuationManager, has_local_tools, prior_response_error
 from .image_resize import ImageResizer, ResizeWorkBudget, RESIZE_POLICY
 from .request_size import RequestTooLarge, encode_request, normalize_transport_error, warning_level
 from .status import BudgetStatus, StatusMiddleware
-from .transform import ToolContext, _unwrap_custom_arguments, transform_request, transform_response
+from .transform import (
+    ToolContext,
+    UnsupportedAgentMessage,
+    _unwrap_custom_arguments,
+    transform_request,
+    transform_response,
+)
 
 
 PERPLEXITY_RESPONSES_URL = "https://api.perplexity.ai/v1/responses"
@@ -130,11 +136,16 @@ class ContinuationCapture:
         response = self.response if response is None else response
         if self.invalid or not isinstance(response, dict) or not isinstance(response.get("output"), list):
             return
-        output, _ = transform_request({"input": response["output"], "tools": self.tools}, self.model)
         response_id = response.get("id")
         if (response.get("status") == "completed" and isinstance(response_id, str)
                 and 0 < len(response_id) <= 256):
-            self.pending = (response, output["input"])
+            try:
+                output, _ = transform_request({"input": response["output"], "tools": self.tools}, self.model)
+                replay_items = output["input"]
+            except UnsupportedAgentMessage:
+                # Deliver the response and account for it without saving a checkpoint.
+                replay_items = None
+            self.pending = (response, replay_items)
 
     def finalize(self, delivered):
         # Called only after ASGI has delivered the whole response. A cancelled
@@ -153,8 +164,10 @@ class ContinuationCapture:
                     self.budget_status.image_saved_bytes += prepared.saved_bytes
             if self.key is not None:
                 self.manager.saved_bytes += self.saved_bytes
-            if self.key is not None:
-                self.manager.accept(self.key, response, self.fingerprints, output, self.input_items)
+                if output is None:
+                    self.manager.invalidate(self.key)
+                else:
+                    self.manager.accept(self.key, response, self.fingerprints, output, self.input_items)
 
 
 def _parse_route(value: str) -> ModelRoute:
@@ -772,7 +785,13 @@ def create_app(settings: Settings, transport: httpx.AsyncBaseTransport | None = 
             )
 
         payload = _normalize_model_request(payload, route)
-        upstream_payload, tool_context = transform_request(payload, route.upstream)
+        try:
+            upstream_payload, tool_context = transform_request(payload, route.upstream)
+        except UnsupportedAgentMessage as exc:
+            return JSONResponse(status_code=400, content={"error": {
+                "message": str(exc), "type": "invalid_request_error",
+                "code": "unsupported_agent_message", "param": exc.param,
+            }})
         full_payload = upstream_payload
         capture = ContinuationCapture(continuation, None, None, full_payload.get("tools", []), route.upstream, budget_status)
         request.state.continuation_outcome = capture

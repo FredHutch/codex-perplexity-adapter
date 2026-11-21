@@ -1,9 +1,7 @@
-# v0.1.17 — GPT-6.2 model support
+# v0.1.18 — Codex subagent handoffs
 
-Choose `gpt-6.2-sol` or `gpt-6.2-astra` in Codex. Both models are included in the adapter's model list and the macOS About window, and route to their matching Perplexity models.
+The adapter translates plaintext Codex subagent tasks and replies into standard user messages. This fixes the `unknown item type "agent_message"` error during task delivery and when a conversation replays a child’s reply.
 
-The adapter maps `none` and `minimal` reasoning effort to `low` for these models and removes unsupported sampling and log-probability options. These rules also apply through custom, pinned, and passthrough routes.
+Handoffs containing `encrypted_content` return a local `unsupported_agent_message` error with the original input index. Codex must provide a readable task for the child to receive it.
 
-Existing model names, the 19 MB request guard, automatic oversized-image recovery, and conversation reuse remain available. Resizing can reduce small-text readability; use `--no-resize-images-on-limit` for precision form review.
-
-See [release verification](VERIFICATION_0.1.17_RELEASE.md) for local client, live model, and distribution checks. The downloads include Apple Silicon and Intel macOS apps, a Python wheel, and SHA-256 checksums.
+The downloads include Apple Silicon and Intel macOS apps, a Python wheel, and SHA-256 checksums.

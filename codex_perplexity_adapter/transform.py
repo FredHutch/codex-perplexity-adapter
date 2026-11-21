@@ -134,18 +134,47 @@ def _normalize_tool_output(output: Any, *, custom: bool) -> Any:
     return parts
 
 
+class UnsupportedAgentMessage(ValueError):
+    def __init__(self, index: int):
+        self.param = f"input[{index}]"
+        super().__init__(f"{self.param}: The Perplexity adapter requires Codex subagent messages "
+                         "to contain only plaintext input_text parts.")
+
+
+def _normalize_agent_message(item: dict[str, Any], index: int) -> dict[str, Any]:
+    content = item.get("content")
+    if "encrypted_content" in item or not isinstance(content, list):
+        raise UnsupportedAgentMessage(index)
+
+    parts = []
+    for part in content:
+        if (not isinstance(part, dict) or part.get("type") != "input_text"
+                or not isinstance(part.get("text"), str) or "encrypted_content" in part):
+            raise UnsupportedAgentMessage(index)
+        # Perplexity rejects zero-length text parts even in an otherwise valid message.
+        if part["text"]:
+            parts.append({"type": "input_text", "text": part["text"]})
+    if not any(part["text"].strip() for part in parts):
+        raise UnsupportedAgentMessage(index)
+
+    return {"type": "message", "role": "user", "content": parts}
+
+
 def _normalize_history(items: Any) -> tuple[Any, list[dict[str, Any]]]:
     if not isinstance(items, list):
         return items, []
 
     normalized: list[Any] = []
     additional_tools: list[dict[str, Any]] = []
-    for item in items:
+    for index, item in enumerate(items):
         if not isinstance(item, dict):
             normalized.append(item)
             continue
 
         item_type = item.get("type")
+        if item_type == "agent_message":
+            normalized.append(_normalize_agent_message(item, index))
+            continue
         if item_type == "additional_tools":
             tools = item.get("tools")
             if isinstance(tools, list):
