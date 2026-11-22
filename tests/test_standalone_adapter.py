@@ -1348,6 +1348,11 @@ class StreamSchemaTests(unittest.TestCase):
         )
         self.assertEqual(delta[0]["type"], "response.function_call_arguments.delta")
         self.assertEqual(delta[0]["delta"], '{"city":"Sea')
+        for invalid in ([], {}):
+            malformed = normalizer.normalize({
+                "type": "response.function_call_arguments.delta", "output_index": invalid, "delta": "test",
+            })
+            self.assertEqual(malformed[0]["delta"], "test")
 
     def test_agent_argument_events_match_the_validated_call(self):
         name = "collaboration__spawn_agent"
@@ -1381,6 +1386,28 @@ class StreamSchemaTests(unittest.TestCase):
                     "status": "completed", "output": [call],
                 }})
                 self.assertEqual(terminal[-1]["response"]["output"], [events[-1]["item"]])
+
+    def test_fragmented_agent_arguments_keep_the_completed_value(self):
+        name = "collaboration__spawn_agent"
+        context = ToolContext(namespace_tools={name: ("collaboration", "spawn_agent")},
+                              plaintext_agent_tools={name})
+        normalizer = ResponsesStreamNormalizer(context)
+        arguments = json.dumps({"message": "x" * 520})
+        call = {"id": "fc_spawn", "type": "function_call", "name": name,
+                "call_id": "call_spawn", "arguments": arguments}
+        normalizer.normalize({"type": "response.output_item.added", "item": {**call, "arguments": ""}})
+        for character in arguments:
+            normalizer.normalize({"type": "response.function_call_arguments.delta",
+                                  "item_id": "fc_spawn", "delta": character})
+        normalizer.normalize({"type": "response.function_call_arguments.done",
+                              "item_id": "fc_spawn", "arguments": arguments})
+        emitted = normalizer.normalize({"type": "response.output_item.done", "item": call})
+        self.assertEqual([event["type"] for event in emitted], [
+            "response.function_call_arguments.delta", "response.function_call_arguments.done",
+            "response.output_item.done",
+        ])
+        self.assertEqual(emitted[0]["delta"], arguments)
+        self.assertEqual(emitted[1]["arguments"], arguments)
 
     def test_malformed_message_item_is_made_valid_for_codex(self):
         normalizer = ResponsesStreamNormalizer(ToolContext())

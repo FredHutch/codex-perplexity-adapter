@@ -477,9 +477,11 @@ class ResponsesStreamNormalizer:
             if output_index is None and not isinstance(item_id, str) and not isinstance(call_id, str):
                 output_index = event.get("output_index")
             pending = self.agent_argument_events.get(output_index) if isinstance(output_index, int) else None
-            if output_index in self.agent_argument_events:
+            if isinstance(output_index, int) and output_index in self.agent_argument_events:
                 # Keep buffering bounded if an upstream stream fragments arguments excessively.
-                if pending is not None and len(pending) < 512:
+                if pending is not None and (len(pending) < 512 or (
+                    len(pending) == 512 and event_type == "response.function_call_arguments.done"
+                )):
                     pending.append(event)
                 return []
             if (isinstance(item_id, str) and item_id in self.custom_item_ids) or (
