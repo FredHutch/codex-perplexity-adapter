@@ -14,6 +14,7 @@ COLLABORATION_MODE_BLOCK = re.compile(
     re.DOTALL,
 )
 AGENT_HANDOFF_TOOLS = {"spawn_agent", "send_message", "followup_task"}
+OPAQUE_AGENT_PAYLOAD = re.compile(r"(?:gAAAAA|pv_)[A-Za-z0-9_+/=.-]{32,}")
 
 
 def _normalize_collaboration_modes(items: list[Any]) -> list[Any]:
@@ -83,6 +84,7 @@ def _normalize_collaboration_modes(items: list[Any]) -> list[Any]:
 class ToolContext:
     custom_names: set[str] = field(default_factory=set)
     namespace_tools: dict[str, tuple[str, str]] = field(default_factory=dict)
+    plaintext_agent_tools: set[str] = field(default_factory=set)
 
     def upstream_name(self, namespace: str, name: str) -> str:
         for upstream, original in self.namespace_tools.items():
@@ -141,6 +143,10 @@ class UnsupportedAgentMessage(ValueError):
         super().__init__(f"{self.param}: Codex subagent message has an unsupported format or no readable payload.")
 
 
+def _is_opaque_agent_payload(text: str) -> bool:
+    return OPAQUE_AGENT_PAYLOAD.fullmatch(text.strip()) is not None
+
+
 def _plaintext_agent_handoff(item: dict[str, Any], content: list[Any]) -> list[Any]:
     """Recover plaintext tool arguments that Codex put in its encrypted envelope."""
     if len(content) != 2 or not all(isinstance(part, dict) for part in content):
@@ -155,7 +161,7 @@ def _plaintext_agent_handoff(item: dict[str, Any], content: list[Any]) -> list[A
     if header.get("text") not in ("Message Type: NEW_TASK" + suffix, "Message Type: MESSAGE" + suffix):
         return content
     payload = body.get("encrypted_content")
-    if not isinstance(payload, str) or not payload.strip() or payload.lstrip().startswith(("gAAAAA", "pv_")):
+    if not isinstance(payload, str) or not payload.strip() or _is_opaque_agent_payload(payload):
         return content
     return [header, {"type": "input_text", "text": payload}]
 
@@ -250,6 +256,29 @@ def _normalize_agent_handoff_tool(tool: dict[str, Any]) -> dict[str, Any]:
     return {**tool, "parameters": {**parameters, "properties": {**properties, "message": plaintext_message}}}
 
 
+def _agent_message_arguments(item: dict[str, Any]) -> dict[str, Any] | None:
+    raw = item.get("arguments")
+    if not isinstance(raw, str):
+        return None
+    try:
+        arguments = json.loads(raw)
+    except ValueError:
+        return None
+    if isinstance(arguments, dict) and isinstance(arguments.get("message"), str):
+        return arguments
+    return None
+
+
+def _remove_opaque_agent_argument(item: dict[str, Any], arguments: dict[str, Any]) -> None:
+    encrypted = item.get("encrypted_function_args")
+    if _is_opaque_agent_payload(arguments["message"]) or (isinstance(encrypted, list) and "message" in encrypted):
+        # Codex rejects an empty task before dispatch and returns the tool error to the parent model.
+        arguments["message"] = ""
+        item["arguments"] = json.dumps(arguments, ensure_ascii=False, separators=(",", ":"))
+        if isinstance(encrypted, list):
+            item["encrypted_function_args"] = [name for name in encrypted if name != "message"]
+
+
 def _normalize_tools(tools: Any) -> tuple[list[Any], ToolContext]:
     normalized: list[Any] = []
     context = ToolContext()
@@ -273,7 +302,10 @@ def _normalize_tools(tools: Any) -> tuple[list[Any], ToolContext]:
             context.namespace_tools[upstream_name] = (namespace, original_name)
         if (tool_type == "function" and namespace == "collaboration"
                 and isinstance(original_name, str) and original_name in AGENT_HANDOFF_TOOLS):
-            tool = _normalize_agent_handoff_tool(tool)
+            plaintext_tool = _normalize_agent_handoff_tool(tool)
+            if plaintext_tool is not tool:
+                context.plaintext_agent_tools.add(upstream_name)
+            tool = plaintext_tool
         if tool_type != "custom":
             normalized.append({**tool, "name": upstream_name} if upstream_name != original_name else tool)
             return
@@ -339,6 +371,11 @@ def transform_request(payload: dict[str, Any], upstream_model: str) -> tuple[dic
                     converted = dict(item)
                     converted["name"] = context.upstream_name(namespace, name)
                     converted.pop("namespace", None)
+                    if namespace == "collaboration" and name in AGENT_HANDOFF_TOOLS:
+                        arguments = _agent_message_arguments(converted)
+                        if arguments is not None:
+                            _remove_opaque_agent_argument(converted, arguments)
+                        converted.pop("encrypted_function_args", None)
                     item = converted
             remapped.append(item)
         transformed["input"] = remapped
@@ -381,6 +418,14 @@ def _restore_item(item: Any, context: ToolContext) -> Any:
         restored["input"] = _unwrap_custom_arguments(restored.pop("arguments", ""))
     else:
         restored = item
+    if item.get("type") == "function_call" and item.get("name") in context.plaintext_agent_tools:
+        arguments = _agent_message_arguments(item)
+        if arguments is not None:
+            restored = dict(restored)
+            _remove_opaque_agent_argument(restored, arguments)
+            if restored.get("encrypted_function_args") in (None, []):
+                # Codex treats an explicit empty list as native plaintext delivery.
+                restored["encrypted_function_args"] = []
     original = context.namespace_tools.get(restored.get("name"))
     if original:
         restored = dict(restored)

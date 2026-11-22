@@ -175,6 +175,9 @@ class ContinuationTests(unittest.TestCase):
                 self.assertTrue(message_schema["encrypted"])
                 call = response["output"][0]
                 self.assertEqual((call["namespace"], call["name"]), ("collaboration", "spawn_agent"))
+                self.assertEqual(call["encrypted_function_args"], [])
+                replay, _ = transform_request({"input": [call], "tools": tools}, "openai/gpt-6.1-sol")
+                self.assertNotIn("encrypted_function_args", replay["input"][0])
                 payload = json.loads(call["arguments"])["message"]
 
                 self.provider.output = [answer()]
@@ -191,8 +194,37 @@ class ContinuationTests(unittest.TestCase):
                         {"type": "message", "role": "user", "content": [header, *message(marker)["content"]]},
                     ])
 
+    def test_opaque_agent_arguments_are_removed_from_replay_and_new_calls(self):
+        opaque = "gAAAAA-synthetic-copy-of-an-older-encrypted-assignment"
+        arguments = {"message": opaque, "task_name": "child", "fork_turns": "none"}
+        tool = {"type": "namespace", "name": "collaboration", "tools": [{
+            "type": "function", "name": "spawn_agent",
+            "parameters": {"type": "object", "properties": {"message": {"type": "string", "encrypted": True}}},
+        }]}
+        old_call = {"type": "function_call", "name": "spawn_agent", "namespace": "collaboration",
+                    "call_id": "call_old", "arguments": json.dumps(arguments)}
+        result = {"type": "function_call_output", "call_id": "call_old", "output": "Original tool result"}
+        newer_call = {**old_call, "id": "fc_new", "name": "collaboration__spawn_agent", "call_id": "call_new"}
+        newer_call.pop("namespace")
+        expected = {**arguments, "message": ""}
+
+        for stream in (False, True):
+            with self.subTest(stream=stream):
+                self.provider.output = [newer_call]
+                reply = self.send([old_call, result, message("Delegate again")], tools=[tool], stream=stream)
+                self.assertEqual(reply.status_code, 200)
+                outbound = self.provider.seen[-1]["input"]
+                self.assertEqual(outbound[1], result)
+                self.assertEqual((outbound[0]["name"], outbound[0]["call_id"]),
+                                 ("collaboration__spawn_agent", "call_old"))
+                self.assertEqual(json.loads(outbound[0]["arguments"]), expected)
+                self.assertNotIn(opaque, reply.text)
+                call = terminal(reply)["output"][0]
+                self.assertEqual(json.loads(call["arguments"]), expected)
+                self.assertEqual(call["encrypted_function_args"], [])
+
     def test_unsupported_agent_messages_are_rejected_at_the_original_index(self):
-        withheld = "gAAAAA-synthetic-opaque-payload"
+        withheld = "gAAAAA-synthetic-opaque-payload-with-extra-characters"
         plaintext = {"type": "input_text", "text": "synthetic-private-message"}
         encrypted = {"type": "encrypted_content", "encrypted_content": withheld}
         agent_message = {"type": "agent_message", "author": "/root", "recipient": "/root/child"}
@@ -209,7 +241,8 @@ class ContinuationTests(unittest.TestCase):
             ("encrypted", {"content": [encrypted]}),
             ("unrecognized envelope", {"content": [plaintext, {**encrypted, "encrypted_content": "Reply with ORCHID"}]}),
             ("ciphertext in native envelope", {"content": [header, encrypted]}),
-            ("opaque envelope in native envelope", {"content": [header, {**encrypted, "encrypted_content": "pv_opaque"}]}),
+            ("opaque envelope in native envelope", {"content": [header, {**encrypted,
+                "encrypted_content": "pv_synthetic-opaque-payload-with-extra-characters"}]}),
             ("missing encrypted value", {"content": [plaintext, {"type": "encrypted_content"}]}),
             ("malformed encrypted value", {"content": [plaintext, {**encrypted, "encrypted_content": 7}]}),
             ("empty encrypted value", {"content": [plaintext, {**encrypted, "encrypted_content": ""}]}),
