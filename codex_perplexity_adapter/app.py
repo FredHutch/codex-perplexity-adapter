@@ -261,6 +261,8 @@ class ResponsesStreamNormalizer:
         self.custom_argument_buffers: dict[str, str] = {}
         self.custom_inputs: dict[str, str] = {}
         self.custom_input_done: set[str] = set()
+        self.agent_argument_events: dict[int, list[dict[str, Any]] | None] = {}
+        self.agent_argument_indexes: dict[str, int] = {}
 
     def _number(self, event: dict[str, Any]) -> dict[str, Any]:
         numbered = dict(event)
@@ -395,6 +397,7 @@ class ResponsesStreamNormalizer:
                     self._canonical_message_item(item, index, completed=True)
             else:
                 terminal_items[index] = item
+                emitted.extend(self._finish_agent_arguments(index, item))
         tool_indexes = [index for index, item in terminal_items.items()
                         if item.get("type") in {"function_call", "custom_tool_call"}]
         for index in sorted(self.messages):
@@ -406,6 +409,24 @@ class ResponsesStreamNormalizer:
         merged.extend(item for item in output if not isinstance(item, dict))
         emitted.append(self._number({**event, "response": {**response, "output": merged}}))
         return emitted
+
+    def _finish_agent_arguments(self, index: int, item: dict[str, Any]) -> list[dict[str, Any]]:
+        pending = self.agent_argument_events.get(index)
+        arguments = item.get("arguments")
+        if pending is None:
+            return []
+        self.agent_argument_events[index] = None
+        if not pending or not isinstance(arguments, str):
+            return []
+
+        deltas = [event for event in pending if event["type"] == "response.function_call_arguments.delta"]
+        done = [event for event in pending if event["type"] == "response.function_call_arguments.done"]
+        original = "".join(event["delta"] for event in deltas if isinstance(event.get("delta"), str))
+        if (not deltas or original == arguments) and all(event.get("arguments") == arguments for event in done):
+            return [self._number(event) for event in pending]
+        replacement = [{**deltas[0], "delta": arguments}] if deltas else []
+        replacement.extend({**event, "arguments": arguments} for event in done)
+        return [self._number(event) for event in replacement]
 
     def _custom_input_events(self, item_id: str, output_index: int, custom_input: str) -> list[dict[str, Any]]:
         if item_id in self.custom_input_done:
@@ -450,6 +471,19 @@ class ResponsesStreamNormalizer:
         }:
             item_id = event.get("item_id")
             call_id = event.get("call_id")
+            output_index = self.agent_argument_indexes.get(item_id) if isinstance(item_id, str) else None
+            if output_index is None and isinstance(call_id, str):
+                output_index = self.agent_argument_indexes.get(call_id)
+            if output_index is None and not isinstance(item_id, str) and not isinstance(call_id, str):
+                output_index = event.get("output_index")
+            pending = self.agent_argument_events.get(output_index) if isinstance(output_index, int) else None
+            if isinstance(output_index, int) and output_index in self.agent_argument_events:
+                # Keep buffering bounded if an upstream stream fragments arguments excessively.
+                if pending is not None and (len(pending) < 512 or (
+                    len(pending) == 512 and event_type == "response.function_call_arguments.done"
+                )):
+                    pending.append(event)
+                return []
             if (isinstance(item_id, str) and item_id in self.custom_item_ids) or (
                 isinstance(call_id, str) and call_id in self.custom_call_ids
             ):
@@ -490,6 +524,14 @@ class ResponsesStreamNormalizer:
                 if item.get("type") in {"function_call", "custom_tool_call"}:
                     emitted.extend(self._finish_before_tool(output_index))
                 self.item_ids[output_index] = item["id"]
+                upstream_item = payload.get("item", {})
+                if (item.get("type") == "function_call"
+                        and upstream_item.get("name") in self.tool_context.plaintext_agent_tools):
+                    # Hold these argument events until the completed item can be validated.
+                    self.agent_argument_events.setdefault(output_index, [])
+                    self.agent_argument_indexes[item["id"]] = output_index
+                    if isinstance(item.get("call_id"), str):
+                        self.agent_argument_indexes[item["call_id"]] = output_index
                 if item.get("type") == "custom_tool_call":
                     self.custom_item_ids.add(item["id"])
                     self.custom_item_indexes[item["id"]] = output_index
@@ -531,6 +573,7 @@ class ResponsesStreamNormalizer:
                     self.item_ids[output_index] = item["id"]
                 if item.get("type") in {"function_call", "custom_tool_call"}:
                     emitted.extend(self._finish_before_tool(output_index))
+                emitted.extend(self._finish_agent_arguments(output_index, item))
                 self.completed_items[output_index] = item
 
         if event_type in {"response.output_text.delta", "response.output_text.done"}:
